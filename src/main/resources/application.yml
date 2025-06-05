@@ -4,11 +4,11 @@ server:
 # 邮件配置
 mail:
   imap:
-    server: imap.qq.com
+    server: imap.139.com
     port: 993
     protocol: imaps
-    username:  # 邮箱
-    password:  # QQ邮箱的授权码
+    username: @139.com # 邮箱
+    password:   # QQ邮箱的授权码
     attachment-dir: D:\\ # 附件保存目录
     # 连接配置
     connection:
@@ -17,8 +17,8 @@ mail:
       write-timeout: 30000 # 写入超时(毫秒)
     # 监控配置
     monitor:
-      idle-timeout: 10000 # IDLE命令超时时间(毫秒)
-      keep-alive-interval: 300 # 保活间隔(秒)
+      idle-timeout: 20000 # IDLE命令超时时间(毫秒)，增加到20秒
+      keep-alive-interval: 240 # 保活间隔(秒)，减少到4分钟
       reconnect-delay: 15 # 重连延迟(秒)
       short-delay: 5 # 短暂延迟(秒)
       long-delay: 30 # 长延迟(秒)

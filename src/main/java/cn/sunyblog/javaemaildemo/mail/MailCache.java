@@ -85,13 +85,19 @@ public class MailCache {
     }
 
     /**
-     * 标记邮件为已处理
+     * 检查并标记邮件为已处理（原子操作）
      *
      * @param messageId 邮件ID
+     * @return 如果邮件之前未处理过则返回true，否则返回false
      */
-    public void markAsProcessed(String messageId) {
+    public synchronized boolean checkAndMarkAsProcessed(String messageId) {
+        if (processedMessageIds.contains(messageId)) {
+            return false; // 已处理过
+        }
+        
+        // 标记为已处理
         processedMessageIds.add(messageId);
-
+        
         // 如果缓存超过上限，清理一部分
         if (processedMessageIds.size() > MAX_CACHE_SIZE) {
             log.info("邮件ID缓存达到上限，正在清理...");
@@ -103,6 +109,8 @@ public class MailCache {
             processedMessageIds.addAll(newSet);
             log.info("邮件ID缓存清理完成，当前大小: {}", processedMessageIds.size());
         }
+        
+        return true; // 之前未处理过
     }
 
     /**

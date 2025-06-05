@@ -1,5 +1,6 @@
 package cn.sunyblog.javaemaildemo.mail;
 import com.sun.mail.imap.IMAPFolder;
+import com.sun.mail.imap.IMAPStore;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +29,8 @@ public class MailListener {
     private MailProcessor mailProcessor;
     @Resource
     private ExecutorService noticeThreadPool;
-
+    @Resource
+    private MailCache mailCache;
     private Session session;
     private Store store;
     private Folder folder;
@@ -74,24 +76,32 @@ public class MailListener {
     /**
      * 设置邮件监听器
      */
+    // 添加一个标志位
+    private final AtomicBoolean processingEvent = new AtomicBoolean(false);
+    
     private void setupMessageListener() {
         folder.addMessageCountListener(new MessageCountAdapter() {
             @Override
             public void messagesAdded(MessageCountEvent e) {
-                Message[] messages = e.getMessages();
-                long eventStartTime = System.currentTimeMillis();
-                log.info("收到{}封新邮件", messages.length);
-
-                // 使用线程池处理邮件，不阻塞JavaMail事件线程
-                for (Message message : messages) {
-                    final Message finalMessage = message;
-                    noticeThreadPool.execute(() -> {
-                        mailProcessor.processMessage(finalMessage);
-                    });
+                processingEvent.set(true); // 设置标志位
+                try {
+                    Message[] messages = e.getMessages();
+                    long eventStartTime = System.currentTimeMillis();
+                    log.info("收到{}封新邮件", messages.length);
+    
+                    // 使用线程池处理邮件，不阻塞JavaMail事件线程
+                    for (Message message : messages) {
+                        final Message finalMessage = message;
+                        noticeThreadPool.execute(() -> {
+                            mailProcessor.processMessage(finalMessage);
+                        });
+                    }
+    
+                    long eventEndTime = System.currentTimeMillis();
+                    log.info("邮件事件分发完成，总耗时: {}毫秒", eventEndTime - eventStartTime);
+                } finally {
+                    processingEvent.set(false); // 重置标志位
                 }
-
-                long eventEndTime = System.currentTimeMillis();
-                log.info("邮件事件分发完成，总耗时: {}毫秒", eventEndTime - eventStartTime);
             }
         });
     }
@@ -164,6 +174,13 @@ public class MailListener {
     private void startMonitorThread(MailServerConnector serverConnector) {
         monitorThread = new Thread(() -> {
             log.info("邮件监听线程已启动");
+            // 添加一个短暂延迟，避免与初始化时的事件检测冲突
+            try {
+                TimeUnit.SECONDS.sleep(2);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            
             while (isRunning.get()) {
                 try {
                     if (folder instanceof IMAPFolder) {
@@ -173,15 +190,46 @@ public class MailListener {
                         if (!imapFolder.isOpen()) {
                             log.info("文件夹已关闭，正在重新打开");
                             imapFolder.open(Folder.READ_WRITE);
+                            // 重新添加监听器
+                            setupMessageListener();
                         }
 
-                        // IDLE命令会阻塞，直到有新邮件或超时
-                        log.debug("进入IDLE模式");
-                        imapFolder.idle(true);
+                        // 使用混合模式：先尝试IDLE，如果不支持或失败则使用轮询
+                        // 检查服务器是否支持IDLE命令 (通过协议能力检查)
+                        boolean supportsIdle = false;
+                        try {
+                            // 获取IMAP协议对象并检查能力
+                            if (imapFolder.getStore() instanceof IMAPStore) {
+                                IMAPStore imapStore = (IMAPStore) imapFolder.getStore();
+                                supportsIdle = imapStore.hasCapability("IDLE");
+                            }
+                        } catch (Exception e) {
+                            log.warn("检查IDLE能力时出错: {}", e.getMessage());
+                            supportsIdle = false;
+                        }
+
+                        if (supportsIdle) {
+                            // IDLE命令会阻塞，直到有新邮件或超时
+                            log.debug("进入IDLE模式");
+                            try {
+                                // 修改：使用较短的超时时间
+                                imapFolder.idle(false);
+                            } catch (MessagingException e) {
+                                log.warn("IDLE命令执行失败: {}", e.getMessage());
+                            }
+                            log.debug("退出IDLE模式");
+                            // 在IDLE之后，主动检查一次新邮件
+                            checkNewMessages();
+                        } else {
+                            // 如果不支持IDLE，使用轮询
+                            //log.warn("当前邮件服务不支持IDLE模式，使用轮询方式");
+                            TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
+                            checkNewMessages();
+                        }
                     } else {
-                        log.warn("当前邮件服务不支持IDLE模式，使用轮询方式");
+                        //log.warn("当前邮件服务不支持IDLE模式，使用轮询方式");
                         TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
-                        folder.getMessageCount(); // 触发检查
+                        checkNewMessages();
                     }
                 } catch (FolderClosedException fce) {
                     log.warn("文件夹已关闭: {}", fce.getMessage());
@@ -227,9 +275,53 @@ public class MailListener {
             }
             log.info("邮件监听线程已停止");
         });
-
+    
         monitorThread.setDaemon(true);
         monitorThread.start();
+    }
+
+    /**
+     * 检查新邮件（轮询方式）
+     */
+    private void checkNewMessages() {
+        // 如果正在处理事件通知，则跳过本次轮询
+        if (processingEvent.get()) {
+            log.debug("正在处理邮件事件，跳过本次轮询");
+            return;
+        }
+        
+        try {
+            log.debug("开始检查新邮件");
+            if (!folder.isOpen()) {
+                folder.open(Folder.READ_WRITE);
+                // 重新添加监听器
+                setupMessageListener();
+            }
+    
+            // 获取未读邮件
+            FlagTerm ft = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
+            Message[] messages = folder.search(ft);
+    
+            if (messages.length > 0) {
+                log.info("轮询检测到{}封未读邮件", messages.length);
+    
+                for (Message message : messages) {
+                    String messageId = mailCache.getMessageId(message);
+                    if (!mailCache.shouldProcessMessage(messageId)) {
+                        log.debug("邮件已处理，跳过轮询处理: {}", messageId);
+                        continue;
+                    }
+    
+                    noticeThreadPool.execute(() -> {
+                        mailProcessor.processMessage(message);
+                    });
+                }
+            } else {
+                log.debug("轮询检查：没有新邮件");
+            }
+        } catch (Exception e) {
+            log.error("轮询检查邮件异常: {}", e.getMessage(), e);
+        }
     }
 
     /**

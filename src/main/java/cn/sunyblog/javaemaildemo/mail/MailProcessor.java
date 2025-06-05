@@ -36,8 +36,8 @@ public class MailProcessor {
             // 获取邮件ID
             String messageId = mailCache.getMessageId(message);
 
-            // 如果消息已处理，跳过
-            if (!mailCache.shouldProcessMessage(messageId)) {
+            // 原子性检查并标记为已处理
+            if (!mailCache.checkAndMarkAsProcessed(messageId)) {
                 log.debug("邮件已处理，跳过: {}", messageId);
                 return false;
             }
@@ -62,9 +62,6 @@ public class MailProcessor {
             } catch (MessagingException ex) {
                 log.error("标记邮件为已读失败: {}", ex.getMessage(), ex);
             }
-
-            // 标记为已处理
-            mailCache.markAsProcessed(messageId);
 
             return true;
         } catch (MessagingException | IOException e) {

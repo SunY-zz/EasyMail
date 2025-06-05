@@ -64,13 +64,29 @@ public class MailServerConnector {
         props.setProperty("mail.imap.connectionpoolsize", "1");
 
         // IDLE模式支持
+        // 修改IDLE模式支持
         props.setProperty("mail.imap.usesocketchannels", "true");
         props.setProperty("mail.imap.enableimapevents", "true");
         props.setProperty("mail.event.scope", "session");
+        // 添加以下配置
+        props.setProperty("mail.imap.folderopen.timeout", "5000");
+        props.setProperty("mail.imap.fetchsize", "1048576");
+        props.setProperty("mail.imap.peek", "true");
+        props.setProperty("mail.imap.connectionpool.debug", "true");
+        
+        // 删除这一行错误配置
+        // props.setProperty("mail.event.executor", "java.util.concurrent.Executors$DelegatedExecutorService");
+        
+        // 如果需要设置executor，应该使用put方法并传入实际的Executor实例
+        // 例如：props.put("mail.event.executor", Executors.newFixedThreadPool(2));
+        // 但在大多数情况下，可以让JavaMail使用默认的executor
+        
         // 添加SSL证书信任设置
-        props.setProperty("mail.imap.ssl.trust", "*.qq.com");
+        props.setProperty("mail.imap.ssl.trust", "*.139.com");
         props.setProperty("mail.imap.ssl.checkserveridentity", "false");
 
+        props.setProperty("mail.imaps.auth.login.disable", "false");
+        props.setProperty("mail.imaps.auth.plain.disable", "true"); // 禁用PLAIN
         // 禁用所有SSL验证
         props.setProperty("mail.imap.ssl.enable", "true");
         props.setProperty("mail.imap.starttls.enable", "true");
