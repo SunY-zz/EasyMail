@@ -4,23 +4,23 @@ server:
 # 邮件配置
 mail:
   imap:
-    server: imap.sina.com
+    server: imap.163.com
     port: 993
     protocol: imaps
-#    username: 15922557394@163.com # 邮箱
-#    password: GPgLhXKhwcYa4zsX    # QQ邮箱的授权码
+    username: 15922557394@163.com # 邮箱
+    password: GPgLhXKhwcYa4zsX    # QQ邮箱的授权码
 #    username: 15922557394@139.com # 邮箱
 #    password: b912e955273e26792e00  # QQ邮箱的授权码
 #    username: 3881533988@qq.com # 邮箱
 #    password: snjvbipqmiafccfa  # QQ邮箱的授权码
 #    username: 3379652824@qq.com # 邮箱
 #    password: tkfrljmhkckhdbdi  # QQ邮箱的授权码
-    username: daliyuan702@sina.com # 邮箱
-    password: 7981df879cb97fb6  # QQ邮箱的授权码
-    attachment-dir: D:\\ # 附件保存目录
+#    username: daliyuan702@sina.com # 邮箱
+#    password: 7981df879cb97fb6  # QQ邮箱的授权码
+    attachment-dir: D:\ # 附件保存目录
     # 连接配置
     connection:
-      timeout: 30000 # 连接超时(毫秒)
+      timeout: 15000 # 连接超时(毫秒)
       read-timeout: 30000 # 读取超时(毫秒)
       write-timeout: 30000 # 写入超时(毫秒)
     # 监控配置
@@ -30,7 +30,27 @@ mail:
       reconnect-delay: 15 # 重连延迟(秒)
       short-delay: 5 # 短暂延迟(秒)
       long-delay: 30 # 长延迟(秒)
+      task-timeout: 300
+    listener:
+      max-retries: 20
     # 日志配置
     log:
       debug-enabled: false # 是否启用调试日志
+
+  # SMTP邮件发送配置
+  smtp:
+    server: smtp.163.com # SMTP服务器地址
+    port: 465 # SMTP服务器SSL端口
+    protocol: smtp # 协议
+#    username: daliyuan702@sina.com # 邮箱，与IMAP保持一致
+#    password: 7981df879cb97fb6 # 授权码，与IMAP保持一致
+    username: 15922557394@163.com # 邮箱
+    password: GPgLhXKhwcYa4zsX    # QQ邮箱的授权码
+    connection:
+      timeout: 15000 # 连接超时(毫秒)
+      read-timeout: 30000 # 读取超时(毫秒)
+      write-timeout: 30000 # 写入超时(毫秒)
+    properties:
+      mail-smtp-auth: true # 启用SMTP认证
+      mail-smtp-starttls-enable: false # 启用STARTTLS
 

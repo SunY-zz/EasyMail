@@ -1,6 +1,7 @@
 package cn.sunyblog.javaemaildemo.mail;
 import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.IMAPStore;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @date 2025/05/12 16:23
  */
 @Slf4j
+@Data
 @Component
 public class MailListener {
 
@@ -31,6 +33,8 @@ public class MailListener {
     private ExecutorService noticeThreadPool;
     @Resource
     private MailCache mailCache;
+    @Resource
+    private MailServerConnector mailServerConnector;
 
     private Session session;
     private Store store;

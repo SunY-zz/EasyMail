@@ -1,10 +1,13 @@
 package cn.sunyblog.javaemaildemo.mail;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
+import java.io.File;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * @author suny
@@ -13,15 +16,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @date 2025/05/12 16:22
  */
 @Slf4j
+@Data
 @Service
 public class MailService {
 
     @Resource
-    private MailServerConnector serverConnector;
+    private MailServerConnector mailServerConnector;
     @Resource
     private MailListener mailListener;
     @Resource
     private MailProcessor mailProcessor;
+    @Resource
+    private MailSender mailSender;
+    private boolean autoStart = true;
 
     // 添加状态标志，保证线程安全
     private final AtomicBoolean isMailServiceRunning = new AtomicBoolean(false);
@@ -29,10 +36,14 @@ public class MailService {
     /**
      * 服务初始化
      */
-    @PostConstruct
+    //@PostConstruct
     public void init() {
         log.info("邮件监听服务初始化开始");
-        startMailMonitoring();
+        if (autoStart) {
+            startMailMonitoring();
+        } else {
+            log.info("邮件监听器自动启动已禁用，需要手动调用startMailMonitoring()方法启动");
+        }
     }
 
     /**
@@ -59,7 +70,7 @@ public class MailService {
             // 尝试设置状态为运行中，如果有其他线程同时调用，只有一个会成功
             if (isMailServiceRunning.compareAndSet(false, true)) {
                 log.info("开始启动邮件监听服务");
-                mailListener.startListening(serverConnector);
+                mailListener.startListening(mailServerConnector);
 
                 // 检查是否真正启动成功
                 if (mailListener.isRunning()) {
@@ -90,7 +101,7 @@ public class MailService {
         // 只有在服务运行时才需要停止
         if (isMailServiceRunning.get()) {
             log.info("正在关闭邮件监听服务");
-            mailListener.stopListening(serverConnector);
+            mailListener.stopListening(mailServerConnector);
             // 设置状态为未运行
             isMailServiceRunning.set(false);
             log.info("邮件监听服务已关闭");
@@ -115,5 +126,56 @@ public class MailService {
      */
     public String getMailProcessingStats() {
         return mailProcessor.getProcessingStats();
+    }
+    
+    /**
+     * 发送简单文本邮件
+     *
+     * @param to 收件人邮箱
+     * @param subject 邮件主题
+     * @param content 邮件内容
+     * @return 是否发送成功
+     */
+    public boolean sendSimpleEmail(String to, String subject, String content) {
+        return mailSender.sendSimpleEmail(to, subject, content);
+    }
+
+    /**
+     * 发送HTML格式邮件
+     *
+     * @param to 收件人邮箱
+     * @param subject 邮件主题
+     * @param htmlContent HTML格式的邮件内容
+     * @return 是否发送成功
+     */
+    public boolean sendHtmlEmail(String to, String subject, String htmlContent) {
+        return mailSender.sendHtmlEmail(to, subject, htmlContent);
+    }
+
+    /**
+     * 发送带附件的邮件
+     *
+     * @param to 收件人邮箱
+     * @param subject 邮件主题
+     * @param content 邮件内容
+     * @param isHtml 是否为HTML格式
+     * @param attachments 附件列表
+     * @return 是否发送成功
+     */
+    public boolean sendEmailWithAttachments(String to, String subject, String content, boolean isHtml, List<File> attachments) {
+        return mailSender.sendEmailWithAttachments(to, subject, content, isHtml, attachments);
+    }
+
+    /**
+     * 批量发送邮件（相同内容）
+     *
+     * @param toList 收件人列表
+     * @param subject 邮件主题
+     * @param content 邮件内容
+     * @param isHtml 是否为HTML格式
+     * @return 成功发送的邮件数量
+     */
+    public int sendBatchEmails(List<String> toList, String subject, String content, boolean isHtml) {
+        return mailSender.sendBatchEmails(toList, subject, content, isHtml);
     }
 }

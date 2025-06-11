@@ -1,5 +1,6 @@
 package cn.sunyblog.javaemaildemo.mail;
 import com.sun.mail.imap.IMAPStore;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @date 2025/05/12 16:24
  */
 @Slf4j
+@Data
 @Component
 public class MailServerConnector {
 
