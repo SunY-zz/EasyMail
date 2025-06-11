@@ -31,6 +31,7 @@ public class MailListener {
     private ExecutorService noticeThreadPool;
     @Resource
     private MailCache mailCache;
+
     private Session session;
     private Store store;
     private Folder folder;
@@ -44,33 +45,121 @@ public class MailListener {
      * @param serverConnector 服务器连接器
      */
     public void startListening(MailServerConnector serverConnector) {
-        try {
-            // 创建会话并连接服务器
-            session = serverConnector.createSession();
-            store = serverConnector.connectToServer(session);
-            folder = serverConnector.openInbox(store);
+        int retryCount = 0;
+        int maxRetries = mailConfig.getListener().getMaxRetries(); // 最大重试次数
+        long retryDelay = mailConfig.getMonitor().getShortDelay() * 1000; // 重试延迟(毫秒)
 
-            // 处理现有未读邮件
-            log.info("开始处理现有未读邮件");
-            processUnreadEmails();
+        while (retryCount < maxRetries) {
+            try {
+                // 创建会话并连接服务器
+                session = serverConnector.createSession();
+                store = serverConnector.connectToServer(session);
+                folder = serverConnector.openInbox(store);
 
-            // 设置新邮件监听器
-            setupMessageListener();
+                // 处理现有未读邮件
+                log.info("开始处理现有未读邮件");
+                processUnreadEmails();
 
-            // 开始监听
-            log.info("开始监听新邮件");
-            isRunning.set(true);
+                // 设置新邮件监听器
+                setupMessageListener();
 
-            // 启动监听线程
-            startMonitorThread(serverConnector);
+                // 开始监听
+                log.info("开始监听新邮件");
+                isRunning.set(true);
 
-            // 启动保活线程
-            startKeepAliveThread();
+                // 启动监听线程
+                startMonitorThread(serverConnector);
 
-            log.info("邮件监听服务启动完成");
-        } catch (Exception e) {
-            log.error("启动邮件监听失败: {}", e.getMessage(), e);
+                // 启动保活线程
+                startKeepAliveThread();
+
+                log.info("邮件监听服务启动完成");
+                return; // 成功启动，退出方法
+            } catch (Exception e) {
+                retryCount++;
+                log.error("启动邮件监听失败(第{}次尝试，共{}次): {}", retryCount, maxRetries, e.getMessage(), e);
+
+                // 关闭可能部分打开的资源
+                serverConnector.closeConnection(folder, store);
+
+                if (retryCount < maxRetries) {
+                    log.info("将在{}秒后重试连接邮件服务器", mailConfig.getMonitor().getShortDelay());
+                    try {
+                        Thread.sleep(retryDelay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.warn("重试等待被中断");
+                        break;
+                    }
+                }
+            }
         }
+
+        // 所有重试都失败后，启动一个后台线程定期尝试重连
+        startRecoveryThread(serverConnector);
+    }
+
+    /**
+     * 启动恢复线程，定期尝试重新连接邮件服务器
+     */
+    private void startRecoveryThread(MailServerConnector serverConnector) {
+        Thread recoveryThread = new Thread(() -> {
+            log.info("启动邮件服务恢复线程，将定期尝试重新连接");
+            int recoveryAttempt = 0;
+            long connectionTimeout = mailConfig.getConnection().getTimeout() * 1000L; // 连接超时时间(毫秒)
+            log.info("连接超时设置：{}秒", connectionTimeout / 1000);
+            int maxRecoveryAttempts = mailConfig.getMonitor().getReconnectDelay(); // 最大恢复尝试次数
+            while (!isRunning.get() && !Thread.currentThread().isInterrupted() && recoveryAttempt < maxRecoveryAttempts) {
+                recoveryAttempt++;
+                log.info("尝试恢复邮件服务连接(第{}次恢复尝试)最大尝试连接次数：{}", recoveryAttempt,  maxRecoveryAttempts);
+
+                try {
+                    // 创建会话并连接服务器
+                    session = serverConnector.createSession();
+                    store = serverConnector.connectToServer(session);
+                    folder = serverConnector.openInbox(store);
+
+                    // 处理现有未读邮件
+                    log.info("开始处理现有未读邮件");
+                    processUnreadEmails();
+
+                    // 设置新邮件监听器
+                    setupMessageListener();
+
+                    // 开始监听
+                    log.info("开始监听新邮件");
+                    isRunning.set(true);
+
+                    // 启动监听线程
+                    startMonitorThread(serverConnector);
+
+                    // 启动保活线程
+                    startKeepAliveThread();
+
+                    log.info("邮件监听服务恢复成功");
+                    return; // 成功恢复，退出线程
+                } catch (Exception e) {
+                    log.error("恢复邮件服务连接失败: {}", e.getMessage());
+
+                    // 关闭可能部分打开的资源
+                    serverConnector.closeConnection(folder, store);
+
+                    try {
+                        log.info("将在{}秒后再次尝试恢复连接", mailConfig.getMonitor().getLongDelay());
+                        Thread.sleep(connectionTimeout);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.warn("恢复线程被中断");
+                        break;
+                    }
+                }
+            }
+            log.error("邮件服务恢复失败，达到重试次数，将停止邮件监听服务");
+        });
+
+        recoveryThread.setDaemon(true);
+        recoveryThread.setName("MailServiceRecoveryThread");
+        recoveryThread.start();
     }
 
     /**
@@ -78,7 +167,7 @@ public class MailListener {
      */
     // 添加一个标志位
     private final AtomicBoolean processingEvent = new AtomicBoolean(false);
-    
+
     private void setupMessageListener() {
         folder.addMessageCountListener(new MessageCountAdapter() {
             @Override
@@ -88,7 +177,7 @@ public class MailListener {
                     Message[] messages = e.getMessages();
                     long eventStartTime = System.currentTimeMillis();
                     log.info("收到{}封新邮件", messages.length);
-    
+
                     // 使用线程池处理邮件，不阻塞JavaMail事件线程
                     for (Message message : messages) {
                         final Message finalMessage = message;
@@ -96,7 +185,7 @@ public class MailListener {
                             mailProcessor.processMessage(finalMessage);
                         });
                     }
-    
+
                     long eventEndTime = System.currentTimeMillis();
                     log.info("邮件事件分发完成，总耗时: {}毫秒", eventEndTime - eventStartTime);
                 } finally {
@@ -180,7 +269,7 @@ public class MailListener {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            
+
             while (isRunning.get()) {
                 try {
                     if (folder instanceof IMAPFolder) {
@@ -223,11 +312,18 @@ public class MailListener {
                         } else {
                             // 如果不支持IDLE，使用轮询
                             //log.warn("当前邮件服务不支持IDLE模式，使用轮询方式");
-                            TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
+                            try {
+                                TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
+                            } catch (InterruptedException e) {
+                                // 恢复中断标志，以便上层逻辑可以感知到中断请求
+                                Thread.currentThread().interrupt();
+                                log.warn("邮件监听线程被中断，准备退出...");
+                                return; // 或 break，视上下文决定是否终止循环
+                            }
                             checkNewMessages();
                         }
                     } else {
-                        //log.warn("当前邮件服务不支持IDLE模式，使用轮询方式");
+                        log.warn("当前邮件服务不支持IDLE模式，使用轮询方式");
                         TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
                         checkNewMessages();
                     }
@@ -275,53 +371,9 @@ public class MailListener {
             }
             log.info("邮件监听线程已停止");
         });
-    
+
         monitorThread.setDaemon(true);
         monitorThread.start();
-    }
-
-    /**
-     * 检查新邮件（轮询方式）
-     */
-    private void checkNewMessages() {
-        // 如果正在处理事件通知，则跳过本次轮询
-        if (processingEvent.get()) {
-            log.debug("正在处理邮件事件，跳过本次轮询");
-            return;
-        }
-        
-        try {
-            log.debug("开始检查新邮件");
-            if (!folder.isOpen()) {
-                folder.open(Folder.READ_WRITE);
-                // 重新添加监听器
-                setupMessageListener();
-            }
-    
-            // 获取未读邮件
-            FlagTerm ft = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
-            Message[] messages = folder.search(ft);
-    
-            if (messages.length > 0) {
-                log.info("轮询检测到{}封未读邮件", messages.length);
-    
-                for (Message message : messages) {
-                    String messageId = mailCache.getMessageId(message);
-                    if (!mailCache.shouldProcessMessage(messageId)) {
-                        log.debug("邮件已处理，跳过轮询处理: {}", messageId);
-                        continue;
-                    }
-    
-                    noticeThreadPool.execute(() -> {
-                        mailProcessor.processMessage(message);
-                    });
-                }
-            } else {
-                log.debug("轮询检查：没有新邮件");
-            }
-        } catch (Exception e) {
-            log.error("轮询检查邮件异常: {}", e.getMessage(), e);
-        }
     }
 
     /**
@@ -359,6 +411,50 @@ public class MailListener {
     }
 
     /**
+     * 检查新邮件（轮询方式）
+     */
+    private void checkNewMessages() {
+        // 如果正在处理事件通知，则跳过本次轮询
+        if (processingEvent.get()) {
+            log.debug("正在处理邮件事件，跳过本次轮询");
+            return;
+        }
+
+        try {
+            log.debug("开始检查新邮件");
+            if (!folder.isOpen()) {
+                folder.open(Folder.READ_WRITE);
+                // 重新添加监听器
+                setupMessageListener();
+            }
+
+            // 获取未读邮件
+            FlagTerm ft = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
+            Message[] messages = folder.search(ft);
+
+            if (messages.length > 0) {
+                log.info("轮询检测到{}封未读邮件", messages.length);
+
+                for (Message message : messages) {
+                    String messageId = mailCache.getMessageId(message);
+                    if (!mailCache.shouldProcessMessage(messageId)) {
+                        log.debug("邮件已处理，跳过轮询处理: {}", messageId);
+                        continue;
+                    }
+
+                    noticeThreadPool.execute(() -> {
+                        mailProcessor.processMessage(message);
+                    });
+                }
+            } else {
+                log.debug("轮询检查：没有新邮件");
+            }
+        } catch (Exception e) {
+            log.error("轮询检查邮件异常: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
      * 停止邮件监听
      *
      * @param serverConnector 服务器连接器
@@ -379,5 +475,14 @@ public class MailListener {
         serverConnector.closeConnection(folder, store);
 
         log.info("邮件监听服务已成功关闭");
+    }
+
+    /**
+     * 检查邮件监听器是否正在运行
+     *
+     * @return 是否正在运行
+     */
+    public boolean isRunning() {
+        return isRunning.get();
     }
 }

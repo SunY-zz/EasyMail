@@ -94,10 +94,10 @@ public class MailCache {
         if (processedMessageIds.contains(messageId)) {
             return false; // 已处理过
         }
-        
+
         // 标记为已处理
         processedMessageIds.add(messageId);
-        
+
         // 如果缓存超过上限，清理一部分
         if (processedMessageIds.size() > MAX_CACHE_SIZE) {
             log.info("邮件ID缓存达到上限，正在清理...");
@@ -109,7 +109,7 @@ public class MailCache {
             processedMessageIds.addAll(newSet);
             log.info("邮件ID缓存清理完成，当前大小: {}", processedMessageIds.size());
         }
-        
+
         return true; // 之前未处理过
     }
 

@@ -60,8 +60,17 @@ public class MailService {
             if (isMailServiceRunning.compareAndSet(false, true)) {
                 log.info("开始启动邮件监听服务");
                 mailListener.startListening(serverConnector);
-                log.info("邮件监听服务启动成功");
-                return true;
+
+                // 检查是否真正启动成功
+                if (mailListener.isRunning()) {
+                    log.info("邮件监听服务启动成功");
+                    return true;
+                } else {
+                    // 如果监听器没有成功运行，重置服务状态
+                    log.warn("邮件监听服务未能成功启动，但已启动恢复线程");
+                    isMailServiceRunning.set(false);
+                    return false;
+                }
             } else {
                 log.info("另一个线程已经启动了邮件服务，本次启动取消");
                 return false;

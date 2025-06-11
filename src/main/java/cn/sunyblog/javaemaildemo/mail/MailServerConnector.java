@@ -1,4 +1,5 @@
 package cn.sunyblog.javaemaildemo.mail;
+import com.sun.mail.imap.IMAPStore;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -7,7 +8,12 @@ import javax.mail.Folder;
 import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.Store;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author suny
@@ -64,29 +70,14 @@ public class MailServerConnector {
         props.setProperty("mail.imap.connectionpoolsize", "1");
 
         // IDLE模式支持
-        // 修改IDLE模式支持
         props.setProperty("mail.imap.usesocketchannels", "true");
         props.setProperty("mail.imap.enableimapevents", "true");
         props.setProperty("mail.event.scope", "session");
-        // 添加以下配置
-        props.setProperty("mail.imap.folderopen.timeout", "5000");
-        props.setProperty("mail.imap.fetchsize", "1048576");
-        props.setProperty("mail.imap.peek", "true");
-        props.setProperty("mail.imap.connectionpool.debug", "true");
-        
-        // 删除这一行错误配置
-        // props.setProperty("mail.event.executor", "java.util.concurrent.Executors$DelegatedExecutorService");
-        
-        // 如果需要设置executor，应该使用put方法并传入实际的Executor实例
-        // 例如：props.put("mail.event.executor", Executors.newFixedThreadPool(2));
-        // 但在大多数情况下，可以让JavaMail使用默认的executor
-        
         // 添加SSL证书信任设置
-        props.setProperty("mail.imap.ssl.trust", "*.139.com");
+        String[] split = mailConfig.getServer().split("\\.");
+        props.setProperty("mail.imap.ssl.trust", "*" + "." + split[1] + "." + split[2]);
         props.setProperty("mail.imap.ssl.checkserveridentity", "false");
 
-        props.setProperty("mail.imaps.auth.login.disable", "false");
-        props.setProperty("mail.imaps.auth.plain.disable", "true"); // 禁用PLAIN
         // 禁用所有SSL验证
         props.setProperty("mail.imap.ssl.enable", "true");
         props.setProperty("mail.imap.starttls.enable", "true");
@@ -94,23 +85,149 @@ public class MailServerConnector {
         // 使用自定义的SSL工厂
         props.put("mail.imap.ssl.socketFactory", new SSLTrustUtil.TrustAllSSLSocketFactory());
 
-
         return props;
     }
 
     /**
-     * 连接到邮件服务器
+     * 连接到邮件服务器，支持多次快速重试。因为大多数连接超时并非真正意义上的超时，只需要多次尝试连接，如果五次快速连接都失败，则进行较长的超时连接
      *
-     * @param session 邮件会话
-     * @return 邮件存储对象
-     * @throws MessagingException 如果连接失败
+     * @param session JavaMail Session对象
+     * @return 成功连接的Store对象
+     * @throws MessagingException 连接失败时抛出异常
      */
     public Store connectToServer(Session session) throws MessagingException {
         log.info("正在连接邮件服务器: {}", mailConfig.getServer());
-        Store store = session.getStore(mailConfig.getProtocol());
-        store.connect(mailConfig.getServer(), mailConfig.getUsername(), mailConfig.getPassword());
-        log.info("邮件服务器连接成功");
-        return store;
+
+        // 快速重试配置
+        final int quickRetryCount = 5;          // 快速重试次数
+        final int quickRetryTimeout = 3;        // 每次快速重试的超时时间(秒)
+
+        MessagingException lastException = null;
+
+        // 快速重试阶段
+        for (int attempt = 1; attempt <= quickRetryCount; attempt++) {
+            try {
+                log.info("连接尝试 {} (超时: {}秒)", attempt, quickRetryTimeout);
+                return attemptConnection(session, quickRetryTimeout);
+            } catch (MessagingException e) {
+                lastException = e;
+                log.warn("连接尝试 {} 失败: {}", attempt, e.getMessage());
+
+                // 短暂等待后重试
+                try {
+                    Thread.sleep(500); // 500毫秒间隔
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new MessagingException("连接重试被中断");
+                }
+            }
+        }
+        int connectionTimeout = mailConfig.getConnection().getTimeout() / 1000;
+        // 最终尝试（使用较长超时）
+        log.info("快速重试失败，进行最终尝试 (超时: {}秒)", connectionTimeout);
+        try {
+            return attemptConnection(session, connectionTimeout);
+        } catch (MessagingException e) {
+            lastException = e;
+            log.error("最终连接尝试失败: {}", e.getMessage());
+            throw new MessagingException("多次尝试连接邮件服务器失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 执行单次连接尝试，较长的超时
+     *
+     * @param session JavaMail Session对象
+     * @param timeout 超时时间(秒)
+     * @return 成功连接的Store对象
+     * @throws MessagingException 连接失败时抛出异常
+     */
+    private Store attemptConnection(Session session, int timeout) throws MessagingException {
+        final Store store = session.getStore(mailConfig.getProtocol());
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<MessagingException> exceptionRef = new AtomicReference<>();
+
+        Thread connectThread = new Thread(() -> {
+            try {
+                store.connect(mailConfig.getServer(), mailConfig.getUsername(), mailConfig.getPassword());
+                log.debug("邮件服务器连接成功");
+                if (store instanceof IMAPStore) {
+                    try {
+                        // 构建 IMAP ID 信息
+                        Map<String, String> id = new HashMap<>();
+                        id.put("name", "JavaEmailDemo");            // 客户端名称
+                        id.put("version", "1.0.0");                 // 版本号
+                        id.put("vendor", "Sunyblog");               // 开发者/公司
+                        id.put("support-email", "suny@sunyblog.cn"); // 支持邮箱
+
+                        ((IMAPStore) store).id(id);
+                        log.info("IMAP ID 已发送");
+                    } catch (Exception e) {
+                        log.warn("发送 IMAP ID 失败: {}", e.getMessage());
+                    }
+                }
+
+            } catch (MessagingException e) {
+                exceptionRef.set(e);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        connectThread.start();
+
+        try {
+            boolean completed = latch.await(timeout, TimeUnit.SECONDS);
+
+            if (!completed) {
+                connectThread.interrupt();
+                connectThread.join(1000);
+                throw new MessagingException("连接超时，超过" + timeout + "秒未响应");
+            }
+
+            MessagingException exception = exceptionRef.get();
+            if (exception != null) {
+                // 特别处理SSL握手错误
+                if (isSSLHandshakeError(exception)) {
+                    log.error("SSL握手失败: {}", exception.getMessage());
+                    closeQuietly(store);
+                }
+                throw exception;
+            }
+
+            return store;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new MessagingException("连接被中断");
+        }
+    }
+
+    /**
+     * 检查是否为SSL握手错误
+     */
+    private boolean isSSLHandshakeError(MessagingException e) {
+        String message = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        Throwable cause = e.getCause();
+        String causeMessage = cause != null && cause.getMessage() != null ?
+                cause.getMessage().toLowerCase() : "";
+
+        return message.contains("handshake") ||
+                message.contains("ssl") ||
+                causeMessage.contains("handshake") ||
+                causeMessage.contains("ssl");
+    }
+
+    /**
+     * 安静地关闭连接，不抛出异常
+     */
+    private void closeQuietly(Store store) {
+        try {
+            if (store != null && store.isConnected()) {
+                store.close();
+            }
+        } catch (Exception e) {
+            log.warn("关闭连接时出错: {}", e.getMessage());
+        }
     }
 
     /**

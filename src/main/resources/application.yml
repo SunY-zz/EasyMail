@@ -4,11 +4,19 @@ server:
 # 邮件配置
 mail:
   imap:
-    server: imap.139.com
+    server: imap.sina.com
     port: 993
     protocol: imaps
-    username: @139.com # 邮箱
-    password:   # QQ邮箱的授权码
+#    username: 15922557394@163.com # 邮箱
+#    password: GPgLhXKhwcYa4zsX    # QQ邮箱的授权码
+#    username: 15922557394@139.com # 邮箱
+#    password: b912e955273e26792e00  # QQ邮箱的授权码
+#    username: 3881533988@qq.com # 邮箱
+#    password: snjvbipqmiafccfa  # QQ邮箱的授权码
+#    username: 3379652824@qq.com # 邮箱
+#    password: tkfrljmhkckhdbdi  # QQ邮箱的授权码
+    username: daliyuan702@sina.com # 邮箱
+    password: 7981df879cb97fb6  # QQ邮箱的授权码
     attachment-dir: D:\\ # 附件保存目录
     # 连接配置
     connection:
