@@ -110,6 +110,7 @@ public class DefaultEmailSendStrategy implements EmailSendStrategy {
     
     /**
      * 构建重试配置
+     * @return 重试配置
      */
     protected RetryUtil.RetryConfig buildRetryConfig() {
         if (!smtpConfig.getRetry().isEnabled()) {
@@ -131,6 +132,7 @@ public class DefaultEmailSendStrategy implements EmailSendStrategy {
     
     /**
      * 生成邮件ID
+     * @return 邮件ID
      */
     protected String generateMessageId() {
         return "msg_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID().toString().substring(0, 8);
@@ -138,6 +140,8 @@ public class DefaultEmailSendStrategy implements EmailSendStrategy {
     
     /**
      * 获取错误代码
+     * @param e 异常
+     * @return 错误代码
      */
     protected String getErrorCode(Exception e) {
         if (e instanceof MessagingException) {
@@ -153,6 +157,8 @@ public class DefaultEmailSendStrategy implements EmailSendStrategy {
     
     /**
      * 获取异常堆栈信息
+     * @param e 异常
+     * @return 堆栈信息字符串
      */
     protected String getStackTrace(Exception e) {
         StringWriter sw = new StringWriter();

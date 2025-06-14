@@ -1,5 +1,5 @@
-package cn.sunyblog.javaemaildemo;
-
-public class EmailEventTest {
-
-}
+//package cn.sunyblog.javaemaildemo;
+//
+//public class EmailEventTest {
+//
+//}

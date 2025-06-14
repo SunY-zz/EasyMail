@@ -1,11 +1,14 @@
 # Auto Configuration
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-  cn.sunyblog.javaemaildemo.config.EmailListenerAutoConfiguration,\
-  cn.sunyblog.javaemaildemo.config.EmailSenderAutoConfiguration,\
-  cn.sunyblog.javaemaildemo.processor.config.AnnotationDrivenEmailProcessorAutoConfiguration
+cn.sunyblog.javaemaildemo.config.MailConfigCompatibilityAutoConfiguration,\
+cn.sunyblog.javaemaildemo.config.EmailListenerAutoConfiguration,\
+cn.sunyblog.javaemaildemo.config.EmailSenderAutoConfiguration,\
+cn.sunyblog.javaemaildemo.processor.config.AnnotationDrivenEmailProcessorAutoConfiguration
 
 # Spring Boot Configuration Properties
 org.springframework.boot.context.properties.EnableConfigurationProperties=\
+  cn.sunyblog.javaemaildemo.api.EmailListenerProperties,\
+  cn.sunyblog.javaemaildemo.mail.MailConfig,\
   cn.sunyblog.javaemaildemo.config.EmailSenderProperties,\
   cn.sunyblog.javaemaildemo.config.SmtpConfig,\
   cn.sunyblog.javaemaildemo.config.RetryConfig,\

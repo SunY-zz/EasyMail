@@ -8,7 +8,7 @@ import java.lang.annotation.*;
  * 
  * @author suny
  * @version 1.0
- * @date 2025/06/14
+ * @since 2025/06/14
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

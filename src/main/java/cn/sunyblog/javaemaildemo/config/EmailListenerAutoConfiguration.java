@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.annotation.Order;
 
 import java.util.concurrent.ExecutorService;
 
@@ -23,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 @EnableConfigurationProperties(EmailListenerProperties.class)
 @ConditionalOnProperty(prefix = "email.listener", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Import({ThreadPoolConfig.class, SSLTrustInitializer.class})
+@Order(0) // 确保优先级高于MailConfigCompatibilityAutoConfiguration
 public class EmailListenerAutoConfiguration {
 
     /**
@@ -109,6 +111,22 @@ public class EmailListenerAutoConfiguration {
         service.setMailSender(mailSender);
         service.setAutoStart(properties.getListener().isAutoStart());
         return service;
+    }
+
+    /**
+     * 配置MailConfig Bean
+     * 将EmailListenerProperties转换为MailConfig并注册为Bean
+     * 只有在没有其他MailConfig bean且使用email.listener配置时才创建
+     */
+    @Bean("mailConfig")
+    @ConditionalOnMissingBean(name = "mailConfig")
+    @ConditionalOnProperty(prefix = "email.listener", name = "server.host")
+    public MailConfig mailConfig(EmailListenerProperties properties) {
+        log.info("使用新配置格式加载 MailConfig: email.listener.*");
+        MailConfig config = convertToMailConfig(properties);
+        log.info("MailConfig配置: server={}, port={}, protocol={}, username={}", 
+                config.getServer(), config.getPort(), config.getProtocol(), config.getUsername());
+        return config;
     }
 
     /**

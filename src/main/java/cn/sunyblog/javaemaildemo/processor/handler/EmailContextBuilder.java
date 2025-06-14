@@ -149,12 +149,14 @@ public class EmailContextBuilder {
      * 解析内容
      */
     private void parseContent(Message message, String attachmentDir, 
-                             EmailContext.EmailContextBuilder builder) throws Exception {
+                              EmailContext.EmailContextBuilder builder) throws Exception {
         
+        // 只调用一次parseContent，避免重复解析
         String content = contentParser.parseContent(message, attachmentDir);
         
-        // 设置文本内容
+        // 设置文本内容和通用内容字段
         builder.textContent(content);
+        builder.content(content); // 设置兼容性字段
         
         // 如果是HTML内容，也保存HTML版本
         if (message.isMimeType("text/html")) {

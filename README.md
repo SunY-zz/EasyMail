@@ -1,731 +1,779 @@
-# JavaEmailSpringBoot
-
-一个功能强大、易于集成的Java邮件处理库，基于Spring Boot，提供邮件监听、处理和发送功能。
+# EasyMail - 企业级邮件处理SDK
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-8%2B-orange.svg)](https://www.oracle.com/java/technologies/javase-downloads.html)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.x-green.svg)](https://spring.io/projects/spring-boot)
+[![Maven Central](https://img.shields.io/badge/Maven%20Central-1.0.0-brightgreen.svg)](https://search.maven.org/artifact/cn.sunyblog/easymail-spring-boot-starter)
 
-## 功能特点
+一个功能强大、易于集成的企业级Java邮件处理SDK，基于Spring Boot，提供邮件监听、智能处理和批量发送的完整解决方案。
 
-### 核心功能
-- **邮件监听**：自动监听新邮件，支持IMAP协议，实时处理
-- **邮件处理**：灵活的邮件内容解析，支持文本、HTML和附件处理
-- **邮件发送**：支持发送文本邮件、HTML邮件和带附件的邮件
+## ✨ 核心特性
 
-### 高级特性
-- **多种处理方式**：接口实现、函数式处理、工具类方式，满足不同场景需求
-- **自动重连**：智能重连和错误恢复机制，保证服务稳定性
-- **线程池管理**：高效的线程池处理并发邮件，可配置线程数和队列容量
-- **SSL支持**：内置SSL证书信任机制，轻松处理各类邮件服务器
-- **事件机制**：基于Spring事件机制，支持邮件事件发布和订阅
-- **缓存去重**：内置邮件缓存，避免重复处理同一邮件
-- **批量发送**：支持批量发送邮件，提高处理效率
+### 📧 邮件监听与处理
+- **实时监听**：支持IMAP/IMAPS协议，实时监听新邮件
+- **注解驱动**：使用`@EmailProcessor`和`@EmailHandler`注解轻松定义处理逻辑
+- **智能匹配**：支持主题、发件人、内容的精确匹配、包含匹配和正则表达式匹配
+- **优先级控制**：支持处理器优先级设置，确保重要邮件优先处理
+- **异步处理**：支持同步和异步处理模式，提高系统性能
+
+### 🚀 邮件发送服务
+- **多种策略**：默认策略、批量策略、高优先级策略
+- **模板引擎**：支持变量替换的邮件模板系统
+- **批量发送**：并行处理大量邮件发送，性能优异
+- **智能重试**：可配置的重试机制和失败处理
+- **异步发送**：支持异步发送和回调处理
+
+### 🛡️ 企业级特性
 - **自动配置**：Spring Boot自动配置，开箱即用
+- **监控统计**：完整的性能监控和统计信息
+- **健康检查**：内置健康检查和故障恢复机制
+- **线程安全**：高并发环境下的线程安全保证
+- **扩展性强**：支持自定义策略和监听器
 
-## 快速开始
+## 🚀 快速开始
 
 ### 1. 添加依赖
 
-在你的项目的`pom.xml`文件中添加以下依赖：
-
+**Maven:**
 ```xml
 <dependency>
     <groupId>cn.sunyblog</groupId>
-    <artifactId>email-listener-spring-boot-starter</artifactId>
+    <artifactId>easymail-spring-boot-starter</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
 
-或者在`build.gradle`中：
-
+**Gradle:**
 ```groovy
-implementation 'cn.sunyblog:email-listener-spring-boot-starter:1.0.0'
+implementation 'cn.sunyblog:easymail-spring-boot-starter:1.0.0'
 ```
 
-### 2. 配置邮件服务器
+### 重要说明
 
-在你的`application.yml`或`application.properties`文件中添加以下配置：
+**版本 1.0.0 已修复 "No qualifying bean of type 'MailConfig'" 错误**
+
+- ✅ 修复了 MailConfig Bean 无法正确注册的问题
+- ✅ 确保在任何配置情况下都能创建 MailConfig Bean
+- ✅ 支持两种配置格式：`mail.imap.*` 和 `email.listener.*`
+- ✅ 提供向后兼容性，无需修改现有配置
+
+### 2. 基础配置
+
+在`application.yml`中添加邮件服务器配置。SDK支持两种配置格式：
+
+#### 方式一：推荐的新配置格式
 
 ```yaml
 email:
+  # 邮件监听配置
   listener:
     enabled: true
     server:
-      host: imap.example.com
+      host: imap.gmail.com
       port: 993
       protocol: imaps
-      username: your-email@example.com
-      password: your-password
+      username: your-email@gmail.com
+      password: your-app-password
       folder: INBOX
+    connection:
+      timeout: 15000
+      read-timeout: 30000
+      write-timeout: 30000
+    monitor:
+      idle-timeout: 10000
+      keep-alive-interval: 300
+      reconnect-delay: 15
+    listener:
+      max-retries: 20
+      auto-start: true
     attachment:
-      save-dir: /path/to/save/attachments
+      save-dir: ./attachments
+  
+  # 邮件发送配置
+  smtp:
+    host: smtp.gmail.com
+    port: 587
+    username: your-email@gmail.com
+    password: your-app-password
+    auth: true
+    starttls: true
+  
+  # 注解驱动处理器配置
+  annotation-driven-email-processor:
+    enabled: true
+    management:
+      enabled: true
+    scan:
+      packages:
+        - com.yourcompany.email.processors
 ```
 
-### 3. 处理邮件（三种方式）
+#### 方式二：兼容的传统配置格式
 
-#### 方式一：实现接口
+```yaml
+mail:
+  imap:
+    server: imap.gmail.com
+    port: 993
+    protocol: imaps
+    username: your-email@gmail.com
+    password: your-app-password
+    attachment-dir: ./attachments
+    connection:
+      timeout: 15000
+      read-timeout: 30000
+      write-timeout: 30000
+    monitor:
+      idle-timeout: 10000
+      keep-alive-interval: 300
+      reconnect-delay: 15
+    listener:
+      max-retries: 20
+    log:
+      debug-enabled: false
 
-创建一个类实现`EmailListenerApi`接口，用于处理接收到的邮件：
+# 注解驱动处理器配置
+annotation-driven-email-processor:
+  enabled: true
+  scan:
+    packages:
+      - com.yourcompany.email.processors
+```
+
+> **注意**：两种配置格式都支持，但推荐使用新的`email.listener`格式，它提供了更好的结构化配置和更多的配置选项。
+
+### 3. 创建邮件处理器
+
+使用注解驱动的方式创建邮件处理器：
 
 ```java
-import cn.sunyblog.javaemaildemo.api.EmailListenerApi;
-import org.springframework.stereotype.Component;
-
-import javax.mail.Message;
-
 @Component
-public class MyEmailProcessor implements EmailListenerApi {
+@EmailProcessor(
+    group = "business",
+    description = "业务邮件处理器",
+    enabled = true
+)
+public class BusinessEmailProcessor {
     
-    @Override
-    public boolean processEmail(Message message, String content, String subject, String from) {
-        System.out.println("收到新邮件：" + subject);
-        System.out.println("发件人：" + from);
-        System.out.println("内容：" + content);
+    private static final Logger log = LoggerFactory.getLogger(BusinessEmailProcessor.class);
+    
+    /**
+     * 处理验证码邮件
+     * 支持中英文验证码邮件的智能识别
+     */
+    @EmailHandler(
+        name = "verificationCodeHandler",
+        description = "处理验证码邮件",
+        subjectPattern = "(?i).*(验证码|verification|code).*",
+        matchType = EmailHandler.MatchType.REGEX,
+        priority = 100,
+        async = false
+    )
+    public void handleVerificationCode(EmailContext context) {
+        log.info("收到验证码邮件: {}", context.getSubject());
         
-        // 在这里处理邮件内容，例如提取验证码、处理订单通知等
-        
-        return true; // 返回true表示处理成功
+        // 智能提取验证码
+        String code = extractVerificationCode(context.getContent());
+        if (code != null) {
+            log.info("提取到验证码: {}", code);
+            // 处理验证码逻辑
+            processVerificationCode(code, context);
+        }
     }
     
-    @Override
-    public String getProcessorName() {
-        return "MyEmailProcessor"; // 自定义处理器名称
-    }
-}
-```
-
-#### 方式二：函数式处理（更灵活）
-
-使用函数式接口处理邮件，无需实现接口：
-
-```java
-import cn.sunyblog.javaemaildemo.mail.MailProcessor;
-import cn.sunyblog.javaemaildemo.mail.EmailProcessorFunction;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
-import javax.mail.Message;
-
-@Component
-public class FunctionalEmailProcessor {
-
-    @Autowired
-    private MailProcessor mailProcessor;
-    
-    @PostConstruct
-    public void init() {
-        // 使用lambda表达式设置邮件处理函数
-        mailProcessor.setEmailProcessorFunction((message, content, subject, from) -> {
-            System.out.println("函数式处理邮件: " + subject);
-            // 处理邮件逻辑
-            return "处理结果";
-        });
-    }
-}
-```
-
-#### 方式三：工具类方式
-
-直接使用`MailService`作为工具类：
-
-```java
-import cn.sunyblog.javaemaildemo.mail.MailService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
-@Component
-public class EmailProcessorExample {
-
-    @Autowired
-    private MailService mailService;
-    
-    // 启动邮件监听
-    public boolean startEmailListener() {
-        return mailService.startMailMonitoring();
+    /**
+     * 处理订单邮件
+     * 异步处理提高性能
+     */
+    @EmailHandler(
+        name = "orderHandler",
+        description = "处理订单邮件",
+        subjectPattern = "(?i).*(订单|order|购买).*",
+        matchType = EmailHandler.MatchType.REGEX,
+        priority = 90,
+        async = true
+    )
+    public void handleOrderEmail(EmailContext context) {
+        log.info("收到订单邮件: {}", context.getSubject());
+        // 异步处理订单逻辑
+        processOrderAsync(context);
     }
     
-    // 停止邮件监听
-    public void stopEmailListener() {
-        mailService.stopMailMonitoring();
+    /**
+     * 处理重要邮件
+     * 基于发件人匹配
+     */
+    @EmailHandler(
+        name = "importantHandler",
+        description = "处理重要邮件",
+        senderPattern = ".*@important-company\\.com",
+        matchType = EmailHandler.MatchType.REGEX,
+        priority = 200,
+        async = false
+    )
+    public void handleImportantEmail(EmailContext context) {
+        log.warn("收到重要邮件: {} from {}", context.getSubject(), context.getSender());
+        // 立即处理重要邮件
+        processImportantEmail(context);
     }
     
-    // 获取处理统计
-    public String getEmailStats() {
-        return mailService.getMailProcessingStats();
+    private String extractVerificationCode(String content) {
+        // 使用内置的智能验证码提取功能
+        // 支持多种验证码格式的自动识别
+        return VerificationCodeExtractor.extract(content);
+    }
+    
+    private void processVerificationCode(String code, EmailContext context) {
+        // 实现验证码处理逻辑
+    }
+    
+    private void processOrderAsync(EmailContext context) {
+        // 实现订单处理逻辑
+    }
+    
+    private void processImportantEmail(EmailContext context) {
+        // 实现重要邮件处理逻辑
     }
 }
 ```
 
 ### 4. 发送邮件
 
+#### 基本发送
+
 ```java
-import cn.sunyblog.javaemaildemo.mail.MailService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.io.File;
-import java.util.Arrays;
-import java.util.List;
-
 @Service
-public class EmailService {
-
-    @Autowired
-    private MailService mailService;
+public class NotificationService {
     
-    // 发送简单文本邮件
-    public boolean sendTextEmail(String to, String subject, String content) {
-        return mailService.sendSimpleEmail(to, subject, content);
+    @Resource
+    private EmailSenderService emailSenderService;
+    
+    @Resource
+    private EmailSenderStarter emailSenderStarter;
+    
+    /**
+     * 发送简单文本邮件
+     */
+    public void sendWelcomeEmail(String userEmail, String userName) {
+        SendResult result = emailSenderService.sendText(
+            userEmail,
+            "欢迎加入我们！",
+            String.format("亲爱的 %s，欢迎加入我们的平台！", userName)
+        );
+        
+        if (result.isSuccess()) {
+            log.info("欢迎邮件发送成功，消息ID: {}", result.getMessageId());
+        } else {
+            log.error("欢迎邮件发送失败: {}", result.getErrorMessage());
+        }
     }
     
-    // 发送HTML邮件
-    public boolean sendHtmlEmail(String to, String subject, String htmlContent) {
-        return mailService.sendHtmlEmail(to, subject, htmlContent);
-    }
-    
-    // 发送带附件的邮件
-    public boolean sendEmailWithAttachments(String to, String subject, String content, 
-                                           List<File> attachments) {
-        return mailService.sendEmailWithAttachments(to, subject, content, false, attachments);
-    }
-    
-    // 批量发送邮件
-    public int sendBatchEmails(List<String> recipients, String subject, String content) {
-        return mailService.sendBatchEmails(recipients, subject, content, false);
+    /**
+     * 发送HTML邮件
+     */
+    public void sendHtmlNotification(String userEmail, String content) {
+        String htmlContent = String.format(
+            "<html><body><h2>系统通知</h2><p>%s</p></body></html>",
+            content
+        );
+        
+        boolean success = emailSenderStarter.sendHtml(
+            userEmail,
+            "系统通知",
+            htmlContent
+        );
+        
+        log.info("HTML邮件发送结果: {}", success ? "成功" : "失败");
     }
 }
 ```
 
-### 邮件发送重试机制
+#### 模板邮件
 
-系统内置了智能重试机制，当邮件发送失败时会自动进行重试。重试机制支持以下特性：
+```java
+/**
+ * 使用内置模板发送验证码邮件
+ */
+public void sendVerificationCode(String userEmail, String code) {
+    Map<String, Object> variables = new HashMap<>();
+    variables.put("code", code);
+    variables.put("expireMinutes", 10);
+    variables.put("userName", "用户");
+    
+    boolean success = emailSenderStarter.sendWithTemplate(
+        userEmail,
+        "verification",  // 内置验证码模板
+        variables
+    );
+    
+    log.info("验证码邮件发送结果: {}", success ? "成功" : "失败");
+}
 
-- **自动重试**：当邮件发送失败时，系统会根据配置自动重试
-- **指数退避**：每次重试的间隔时间会逐渐增加，避免对邮件服务器造成压力
-- **可配置参数**：可以通过配置文件自定义重试次数、延迟时间等参数
-- **特定异常重试**：只对特定的异常（如网络超时、服务器繁忙等）进行重试
-
-重试机制完全透明，用户无需修改代码即可享受到这一功能。只需在配置文件中启用并设置相关参数：
-
-```yaml
-email:
-  smtp:
-    retry:
-      enabled: true # 启用重试机制
-      max-retries: 3 # 最大重试次数
-      initial-delay-ms: 1000 # 初始重试延迟
-      use-exponential-backoff: true # 使用指数退避策略
+/**
+ * 创建和使用自定义模板
+ */
+public void sendCustomTemplate(String userEmail) {
+    // 创建自定义模板
+    EmailTemplate template = new EmailTemplate(
+        "welcome",
+        "欢迎加入{{company}}",
+        "<h2>欢迎 {{name}}！</h2><p>感谢您加入{{company}}，我们很高兴为您服务。</p>",
+        true  // 是否为HTML模板
+    );
+    
+    // 注册模板
+    emailSenderStarter.getTemplateManager().registerTemplate(template);
+    
+    // 使用模板发送邮件
+    Map<String, Object> vars = new HashMap<>();
+    vars.put("name", "张三");
+    vars.put("company", "示例科技有限公司");
+    
+    SendResult result = emailSenderService.sendWithTemplate(
+        userEmail,
+        template,
+        vars
+    );
+    
+    log.info("自定义模板邮件发送结果: {}", result.isSuccess());
+}
 ```
 
-## 高级配置
+#### 异步和批量发送
 
-### 完整配置选项
+```java
+/**
+ * 异步发送邮件
+ */
+public void sendAsyncEmail(String userEmail, String subject, String content) {
+    // 方式1：带回调的异步发送
+    emailSenderService.sendAsync(
+        userEmail,
+        subject,
+        content,
+        result -> {
+            if (result.isSuccess()) {
+                log.info("异步邮件发送成功: {}", result.getMessageId());
+            } else {
+                log.error("异步邮件发送失败: {}", result.getErrorMessage());
+            }
+        }
+    );
+    
+    // 方式2：返回Future的异步发送
+    CompletableFuture<Boolean> future = emailSenderStarter.sendAsync(
+        userEmail,
+        subject,
+        content
+    );
+    
+    future.thenAccept(success -> {
+        log.info("邮件发送结果: {}", success ? "成功" : "失败");
+    }).exceptionally(throwable -> {
+        log.error("邮件发送异常", throwable);
+        return null;
+    });
+}
+
+/**
+ * 批量发送邮件
+ */
+public void sendBatchEmails(List<String> recipients, String subject, String content) {
+    SendResult batchResult = emailSenderService.sendBatch(
+        recipients,
+        subject,
+        content
+    );
+    
+    log.info("批量发送完成: 成功 {}/{}, 失败 {}",
+        batchResult.getSuccessCount(),
+        batchResult.getTotalCount(),
+        batchResult.getFailureCount()
+    );
+    
+    // 获取失败的邮件地址
+    if (batchResult.getFailureCount() > 0) {
+        List<String> failedRecipients = batchResult.getFailedRecipients();
+        log.warn("发送失败的邮件地址: {}", failedRecipients);
+    }
+}
+```
+
+## 📖 详细配置说明
+
+### 邮件监听配置
 
 ```yaml
 email:
   listener:
-    # 是否启用邮件监听器
-    enabled: true
-    
-    # 邮件服务器配置
+    enabled: true                    # 是否启用邮件监听
     server:
-      # 邮件服务器地址
-      host: imap.example.com
-      # 邮件服务器端口
-      port: 993
-      # 邮件协议，例如imaps
-      protocol: imaps
-      # 邮件账户用户名
-      username: your-email@example.com
-      # 邮件账户授权码
-      password: your-password
-      # 邮件文件夹，默认为收件箱
-      folder: INBOX
-    
-    # 连接配置
-    connection:
-      # 连接超时时间，默认15秒
-      timeout: 15000
-      # 读取超时时间，默认30秒
-      read-timeout: 30000
-      # 写入超时时间，默认30秒
-      write-timeout: 30000
-      # 是否信任所有SSL证书
-      trust-all-certs: true
-    
-    # 监控配置
-    monitor:
-      # Idle状态超时时间，默认10秒
-      idle-timeout: 10000
-      # 保持连接的间隔时间，默认300秒
-      keep-alive-interval: 300
-      # 重新连接的延迟时间，默认15秒
-      reconnect-delay: 15
-      # 短延迟时间，默认5秒
-      short-delay: 5
-      # 长延迟时间，默认30秒
-      long-delay: 30
-      # 任务超时时间，默认300秒
-      task-timeout: 300
-    
-    # 监听配置
-    listener:
-      # 最大重试次数，默认20次
-      max-retries: 20
-      # 是否自动启动
-      auto-start: true
-      # 是否处理现有未读邮件
-      process-existing-unread: true
-      # 线程池核心线程数
-      core-pool-size: 16
-      # 线程池最大线程数
-      max-pool-size: 50
-      # 线程池队列容量
-      queue-capacity: 100
-    
-    # 日志配置
-    log:
-      # 是否启用debug日志，默认不启用
-      debug-enabled: false
-    
-    # 附件配置
+      host: imap.gmail.com          # IMAP服务器地址
+      port: 993                     # IMAP端口
+      protocol: imaps               # 协议 (imap/imaps)
+      username: your-email@gmail.com # 邮箱用户名
+      password: your-app-password    # 邮箱密码或应用密码
+      folder: INBOX                 # 监听的文件夹
     attachment:
-      # 附件存储目录
-      save-dir: /path/to/save/attachments
-      # 是否保存附件
-      save-attachments: true
-      # 是否使用唯一文件名
-      use-unique-filename: true
-      
-  # SMTP邮件发送配置
+      save-dir: ./attachments       # 附件保存目录
+      max-size: 10MB               # 最大附件大小
+    polling:
+      interval: 30000              # 轮询间隔(毫秒)
+      batch-size: 50               # 批处理大小
+    thread-pool:
+      core-size: 5                 # 核心线程数
+      max-size: 20                 # 最大线程数
+      queue-capacity: 100          # 队列容量
+```
+
+### 邮件发送配置
+
+```yaml
+email:
   smtp:
-    # SMTP服务器地址
-    server: smtp.example.com
-    # SMTP服务器端口
-    port: 465
-    # 邮件协议
-    protocol: smtp
-    # 邮件账户用户名
-    username: your-email@example.com
-    # 邮件账户授权码
-    password: your-password
-    # 连接配置
-    connection:
-      # 连接超时时间，默认15秒
-      timeout: 15000
-      # 读取超时时间，默认30秒
-      read-timeout: 30000
-      # 写入超时时间，默认30秒
-      write-timeout: 30000
-    # 邮件属性配置
-    properties:
-      # 是否启用SMTP认证
-      mail-smtp-auth: true
-      # 是否启用STARTTLS
-      mail-smtp-starttls-enable: true
-    # 重试配置
-    retry:
-      # 是否启用重试机制
-      enabled: true
-      # 最大重试次数（不包括第一次尝试）
-      max-retries: 3
-      # 初始重试延迟（毫秒）
-      initial-delay-ms: 1000
-      # 最大重试延迟（毫秒）
-      max-delay-ms: 10000
-      # 是否使用指数退避策略
-      use-exponential-backoff: true
-      # 退避乘数
-      backoff-multiplier: 2.0
+    host: smtp.gmail.com           # SMTP服务器地址
+    port: 587                      # SMTP端口
+    username: your-email@gmail.com # 发送邮箱
+    password: your-app-password    # 邮箱密码
+    auth: true                     # 是否需要认证
+    starttls: true                 # 是否启用STARTTLS
+    ssl: false                     # 是否使用SSL
+  retry:
+    max-retries: 3                 # 最大重试次数
+    retry-delay: 1000              # 重试延迟(毫秒)
+    backoff-multiplier: 2.0        # 退避倍数
+  sender:
+    enabled: true                  # 是否启用发送服务
+    batch-threshold: 10            # 批量发送阈值
+    default-strategy: default      # 默认发送策略
+    thread-pool:
+      core-size: 10                # 核心线程数
+      max-size: 50                 # 最大线程数
 ```
 
-### 邮件过滤和条件处理
+### 注解驱动处理器配置
 
-你可以在邮件处理器中实现自定义的过滤逻辑：
+```yaml
+annotation-driven-email-processor:
+  enabled: true                    # 启用注解驱动处理器
+  management:
+    enabled: true                  # 启用管理功能
+  default:
+    priority: 50                   # 默认优先级
+    async: false                   # 默认同步执行
+  execution:
+    timeout: 30000                 # 执行超时时间(毫秒)
+  performance:
+    monitoring-enabled: true       # 启用性能监控
+    logging-enabled: true          # 启用日志记录
+  concurrency:
+    max-concurrent: 10             # 最大并发处理数
+  scan:
+    packages:                      # 扫描包路径
+      - com.yourcompany.processors
+  verification-code:
+    smart-extraction: true         # 启用智能验证码提取
+    config:
+      min-length: 4                # 验证码最小长度
+      max-length: 8                # 验证码最大长度
+      allow-alphanumeric: true     # 允许字母数字组合
+      exclude-timestamp: true      # 排除时间戳
+```
+
+## 🎯 最佳实践
+
+### 1. 邮件处理器设计原则
 
 ```java
 @Component
-public class FilteredEmailProcessor implements EmailListenerApi {
+@EmailProcessor(group = "core", description = "核心业务处理器")
+public class CoreEmailProcessor {
     
-    @Override
-    public boolean processEmail(Message message, String content, String subject, String from) {
-        // 只处理特定发件人的邮件
-        if (from.contains("important-sender.com")) {
-            // 处理重要邮件
-            return processImportantEmail(message, content, subject);
-        }
-        
-        // 根据主题过滤
-        if (subject.contains("[URGENT]")) {
-            // 处理紧急邮件
-            return processUrgentEmail(message, content);
-        }
-        
-        // 默认处理
-        return processRegularEmail(message, content);
+    // ✅ 好的做法：明确的处理器命名和描述
+    @EmailHandler(
+        name = "loginVerificationHandler",
+        description = "处理登录验证码邮件",
+        subjectPattern = "(?i).*登录验证码.*",
+        matchType = EmailHandler.MatchType.REGEX,
+        priority = 100
+    )
+    public void handleLoginVerification(EmailContext context) {
+        // 处理逻辑
     }
     
-    private boolean processImportantEmail(Message message, String content, String subject) {
-        // 处理重要邮件的逻辑
-        return true;
-    }
-    
-    private boolean processUrgentEmail(Message message, String content) {
-        // 处理紧急邮件的逻辑
-        return true;
-    }
-    
-    private boolean processRegularEmail(Message message, String content) {
-        // 处理普通邮件的逻辑
-        return true;
+    // ✅ 好的做法：使用异步处理耗时操作
+    @EmailHandler(
+        name = "reportHandler",
+        description = "处理报表邮件",
+        subjectPattern = ".*报表.*",
+        matchType = EmailHandler.MatchType.CONTAINS,
+        async = true,  // 异步处理
+        priority = 50
+    )
+    public void handleReport(EmailContext context) {
+        // 耗时的报表处理逻辑
     }
 }
 ```
 
-### 使用邮件事件机制
-
-利用Spring的事件机制，可以在不同组件间传递邮件事件：
+### 2. 错误处理和日志记录
 
 ```java
-// 发布邮件事件
+@EmailHandler(name = "robustHandler", subjectPattern = ".*")
+public void handleEmailRobustly(EmailContext context) {
+    try {
+        // 业务逻辑
+        processEmail(context);
+        
+        // 记录成功日志
+        log.info("邮件处理成功: subject={}, sender={}", 
+                context.getSubject(), context.getSender());
+                
+    } catch (BusinessException e) {
+        // 业务异常处理
+        log.warn("业务处理失败: {}", e.getMessage());
+        // 可以选择重试或者记录到失败队列
+        
+    } catch (Exception e) {
+        // 系统异常处理
+        log.error("邮件处理异常: subject={}", context.getSubject(), e);
+        // 发送告警通知
+        sendAlert("邮件处理异常", e.getMessage());
+    }
+}
+```
+
+### 3. 性能优化建议
+
+```java
+// ✅ 使用异步处理提高吞吐量
+@EmailHandler(async = true, priority = 50)
+public void handleBulkEmail(EmailContext context) {
+    // 批量处理逻辑
+}
+
+// ✅ 合理设置优先级
+@EmailHandler(priority = 200)  // 高优先级
+public void handleUrgentEmail(EmailContext context) {
+    // 紧急邮件处理
+}
+
+@EmailHandler(priority = 10)   // 低优先级
+public void handleBulkEmail(EmailContext context) {
+    // 批量邮件处理
+}
+
+// ✅ 使用精确匹配提高性能
+@EmailHandler(
+    subjectPattern = "验证码",
+    matchType = EmailHandler.MatchType.EXACT  // 精确匹配比正则表达式快
+)
+public void handleExactMatch(EmailContext context) {
+    // 处理逻辑
+}
+```
+
+### 4. 邮件发送最佳实践
+
+```java
+@Service
+public class EmailService {
+    
+    @Resource
+    private EmailSenderService emailSenderService;
+    
+    /**
+     * ✅ 好的做法：使用模板和参数化
+     */
+    public void sendWelcomeEmail(User user) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("userName", user.getName());
+        params.put("activationLink", generateActivationLink(user));
+        
+        emailSenderService.sendWithTemplate(
+            user.getEmail(),
+            "welcome",
+            params
+        );
+    }
+    
+    /**
+     * ✅ 好的做法：批量发送优化
+     */
+    public void sendBulkNotification(List<User> users, String message) {
+        List<String> emails = users.stream()
+            .map(User::getEmail)
+            .collect(Collectors.toList());
+            
+        // 分批发送，避免一次性发送过多
+        int batchSize = 50;
+        for (int i = 0; i < emails.size(); i += batchSize) {
+            List<String> batch = emails.subList(
+                i, Math.min(i + batchSize, emails.size())
+            );
+            
+            emailSenderService.sendBatch(batch, "通知", message);
+        }
+    }
+    
+    /**
+     * ✅ 好的做法：异步发送非关键邮件
+     */
+    public void sendNewsletterAsync(List<String> subscribers, String content) {
+        CompletableFuture.runAsync(() -> {
+            emailSenderService.sendBatch(subscribers, "Newsletter", content);
+        });
+    }
+}
+```
+
+## 🔧 高级功能
+
+### 自定义发送策略
+
+```java
 @Component
-public class EmailEventPublisher implements EmailListenerApi {
+public class CustomEmailSendStrategy implements EmailSendStrategy {
     
-    private final ApplicationEventPublisher eventPublisher;
-    
-    public EmailEventPublisher(ApplicationEventPublisher eventPublisher) {
-        this.eventPublisher = eventPublisher;
+    @Override
+    public String getStrategyName() {
+        return "custom";
     }
     
     @Override
-    public boolean processEmail(Message message, String content, String subject, String from) {
-        // 创建邮件事件
-        EmailEvent event = EmailEvent.builder()
-                .message(message)
-                .subject(subject)
-                .from(from)
-                .content(content)
-                .receivedTime(System.currentTimeMillis())
-                .build();
-        
-        // 发布事件
-        eventPublisher.publishEvent(event);
-        
-        return true;
+    public int getPriority() {
+        return 150;  // 优先级
+    }
+    
+    @Override
+    public boolean canHandle(EmailSendRequest request) {
+        // 自定义处理条件
+        return request.getRecipients().size() > 100;
+    }
+    
+    @Override
+    public SendResult send(EmailSendRequest request) {
+        // 自定义发送逻辑
+        return customSendLogic(request);
     }
 }
+```
 
-// 监听邮件事件
+### 邮件事件监听
+
+```java
 @Component
 public class EmailEventListener {
     
     @EventListener
-    public void handleEmailEvent(EmailEvent event) {
-        // 处理邮件事件
-        System.out.println("收到邮件事件：" + event.getSubject());
-        
-        // 可以根据邮件内容执行不同的业务逻辑
-        if (event.getSubject().contains("订单")) {
-            processOrderEmail(event);
-        } else if (event.getSubject().contains("注册")) {
-            processRegistrationEmail(event);
-        }
+    public void handleEmailReceived(EmailReceivedEvent event) {
+        log.info("收到新邮件: {}", event.getSubject());
+        // 自定义处理逻辑
     }
     
-    private void processOrderEmail(EmailEvent event) {
-        // 处理订单相关邮件
-    }
-    
-    private void processRegistrationEmail(EmailEvent event) {
-        // 处理注册相关邮件
+    @EventListener
+    public void handleEmailSent(EmailSentEvent event) {
+        log.info("邮件发送完成: {}", event.getMessageId());
+        // 发送统计或通知
     }
 }
 ```
 
-## 高级用例
+## 📊 监控和管理
 
-### 验证码提取和处理
+### REST API接口
+
+如果你的项目包含了`spring-boot-starter-web`依赖，EasyMail会自动提供管理API：
+
+```bash
+# 获取所有邮件处理器
+GET /api/email/processor/handlers
+
+# 获取指定组的处理器
+GET /api/email/processor/handlers/group/{groupName}
+
+# 启用/禁用处理器
+POST /api/email/processor/handlers/{handlerName}/enable
+POST /api/email/processor/handlers/{handlerName}/disable
+
+# 获取处理器统计信息
+GET /api/email/processor/statistics
+
+# 获取邮件发送统计
+GET /api/email/sender/statistics
+```
+
+### 健康检查
 
 ```java
 @Component
-public class VerificationCodeProcessor implements EmailListenerApi {
+public class EmailHealthIndicator implements HealthIndicator {
     
-    private static final Pattern VERIFICATION_CODE_PATTERN = Pattern.compile("验证码[：:\s]*(\d{4,6})");
-    
-    @Override
-    public boolean processEmail(Message message, String content, String subject, String from) {
-        // 提取验证码
-        String code = extractVerificationCode(content);
-        if (code != null) {
-            // 处理验证码，例如存入Redis缓存
-            saveVerificationCode(from, code);
-            return true;
-        }
-        return false;
-    }
-    
-    private String extractVerificationCode(String content) {
-        if (content == null) {
-            return null;
-        }
-        
-        Matcher matcher = VERIFICATION_CODE_PATTERN.matcher(content);
-        if (matcher.find()) {
-            return matcher.group(1);
-        }
-        
-        return null;
-    }
-    
-    private void saveVerificationCode(String email, String code) {
-        // 这里可以将验证码存入Redis或其他缓存系统
-        System.out.println("保存验证码: " + email + " -> " + code);
-    }
-}
-```
-
-### 自定义邮件模板发送
-
-```java
-@Service
-public class TemplateEmailService {
-
-    @Autowired
-    private MailService mailService;
-    
-    @Autowired
-    private TemplateEngine templateEngine; // 例如Thymeleaf模板引擎
-    
-    /**
-     * 使用模板发送邮件
-     * 
-     * @param to 收件人
-     * @param subject 主题
-     * @param templateName 模板名称
-     * @param variables 模板变量
-     * @return 是否发送成功
-     */
-    public boolean sendTemplateEmail(String to, String subject, String templateName, Map<String, Object> variables) {
-        // 处理模板
-        Context context = new Context();
-        variables.forEach(context::setVariable);
-        
-        // 生成HTML内容
-        String htmlContent = templateEngine.process(templateName, context);
-        
-        // 发送HTML邮件
-        return mailService.sendHtmlEmail(to, subject, htmlContent);
-    }
-    
-    /**
-     * 发送欢迎邮件
-     */
-    public boolean sendWelcomeEmail(String to, String username) {
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("username", username);
-        variables.put("currentYear", Calendar.getInstance().get(Calendar.YEAR));
-        
-        return sendTemplateEmail(to, "欢迎加入我们！", "welcome-email", variables);
-    }
-}
-```
-
-### 邮件附件处理
-
-```java
-@Component
-public class AttachmentProcessor implements EmailListenerApi {
-    
-    @Autowired
-    private FileStorageService fileStorageService; // 自定义文件存储服务
+    @Resource
+    private MailListener mailListener;
     
     @Override
-    public boolean processEmail(Message message, String content, String subject, String from) {
-        try {
-            if (message.getContent() instanceof Multipart) {
-                Multipart multipart = (Multipart) message.getContent();
-                processAttachments(multipart, from);
-            }
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
+    public Health health() {
+        if (mailListener.isConnected()) {
+            return Health.up()
+                .withDetail("status", "connected")
+                .withDetail("lastCheck", new Date())
+                .build();
+        } else {
+            return Health.down()
+                .withDetail("status", "disconnected")
+                .withDetail("error", "Mail server connection failed")
+                .build();
         }
-    }
-    
-    private void processAttachments(Multipart multipart, String from) throws Exception {
-        for (int i = 0; i < multipart.getCount(); i++) {
-            BodyPart bodyPart = multipart.getBodyPart(i);
-            
-            // 检查是否为附件
-            if (Part.ATTACHMENT.equalsIgnoreCase(bodyPart.getDisposition())) {
-                String fileName = bodyPart.getFileName();
-                
-                // 处理附件，例如保存到云存储
-                try (InputStream is = bodyPart.getInputStream()) {
-                    // 保存附件
-                    String fileUrl = fileStorageService.storeFile(fileName, is);
-                    
-                    // 记录附件信息
-                    logAttachmentInfo(from, fileName, fileUrl);
-                }
-            }
-            
-            // 处理嵌套的Multipart
-            if (bodyPart.getContent() instanceof Multipart) {
-                processAttachments((Multipart) bodyPart.getContent(), from);
-            }
-        }
-    }
-    
-    private void logAttachmentInfo(String from, String fileName, String fileUrl) {
-        System.out.println("收到来自 " + from + " 的附件: " + fileName);
-        System.out.println("附件已保存到: " + fileUrl);
     }
 }
 ```
 
-## 最佳实践
+## 🔍 故障排除
 
-### 安全性建议
+### 常见问题
 
-1. **不要硬编码密码**：使用环境变量或加密的配置文件存储敏感信息
-2. **使用应用专用密码**：对于Gmail等服务，使用应用专用密码而非主密码
-3. **限制权限**：使用具有最小必要权限的邮箱账户
-4. **加密敏感数据**：对提取的敏感信息进行加密存储
-5. **定期轮换密钥**：定期更新邮箱授权码
-6. **启用SSL/TLS**：确保所有邮件传输都使用加密连接
+1. **邮件监听不工作**
+   - 检查IMAP服务器配置是否正确
+   - 确认邮箱密码或应用密码是否有效
+   - 检查防火墙和网络连接
 
-### 性能优化
+2. **邮件发送失败**
+   - 验证SMTP服务器配置
+   - 检查认证信息是否正确
+   - 确认是否需要启用"不够安全的应用访问权限"
 
-1. **调整线程池参数**：根据实际负载调整线程池大小
-2. **批量处理**：使用批量发送API减少网络开销
-3. **缓存优化**：定期清理邮件缓存，避免内存泄漏
-4. **连接池复用**：复用邮件连接，减少连接建立开销
-5. **超时设置**：合理设置连接超时和读写超时，避免资源浪费
+3. **处理器不生效**
+   - 确认包扫描路径配置正确
+   - 检查处理器类是否添加了`@Component`注解
+   - 验证匹配模式是否正确
 
-## 最佳实践
-### 可靠性保障
+### 调试配置
 
-1. **重试机制**：对失败的操作进行智能重试
-   - 邮件发送重试：自动对失败的邮件发送进行重试，支持指数退避策略
-   - 连接重试：自动重试连接邮件服务器，确保连接可靠性
-2. **熔断保护**：实现熔断机制，防止邮件服务器故障影响整个应用
-3. **监控告警**：实现邮件处理状态监控和异常告警
-4. **优雅降级**：在邮件服务不可用时提供降级策略
-5. **定期健康检查**：定期检查邮件连接状态
-
-## 常见问题解答
-
-### 1. 如何处理不同邮件服务商的特殊要求？
-
-不同邮件服务商可能有不同的连接要求和限制。对于常见的邮件服务商：
-
-- **Gmail**: 需要开启"不够安全的应用访问权限"或使用应用专用密码
-- **Outlook/Office365**: 可能需要特殊的认证设置
-- **QQ邮箱**: 需要生成并使用授权码
-- **163邮箱**: 需要在设置中开启IMAP/SMTP服务并使用授权码
-
-### 2. 邮件监听器不工作，如何排查？
-
-1. 检查网络连接是否正常
-2. 验证邮箱凭据是否正确
-3. 确认邮件服务器设置（主机、端口、协议）是否正确
-4. 查看日志中的详细错误信息
-5. 尝试手动启动监听器（`mailService.startMailMonitoring()`）
-6. 检查防火墙设置是否阻止了邮件端口
-
-### 3. 如何处理大量邮件的场景？
-
-1. 增加线程池大小和队列容量
-2. 实现分布式处理架构
-3. 使用消息队列缓冲邮件处理任务
-4. 实现邮件处理的优先级机制
-5. 考虑使用专门的邮件处理服务
-
-### 4. 如何实现邮件处理的幂等性？
-
-使用`MailCache`类来记录已处理的邮件ID，避免重复处理：
-
-```java
-@Component
-public class IdempotentEmailProcessor implements EmailListenerApi {
-    
-    @Autowired
-    private MailCache mailCache;
-    
-    @Override
-    public boolean processEmail(Message message, String content, String subject, String from) {
-        // 获取邮件ID
-        String messageId = mailCache.getMessageId(message);
-        
-        // 检查是否已处理
-        if (!mailCache.checkAndMarkAsProcessed(messageId)) {
-            // 已处理过，跳过
-            return false;
-        }
-        
-        // 处理邮件...
-        return true;
-    }
-}
+```yaml
+logging:
+  level:
+    cn.sunyblog.javaemaildemo: DEBUG
+    javax.mail: DEBUG
+    org.springframework.mail: DEBUG
 ```
 
-## 扩展与集成
+## 📄 许可证
 
-### 与其他系统集成
+本项目采用 [MIT License](LICENSE) 许可证。
 
-1. **数据库集成**：将邮件内容存储到数据库中
-2. **消息队列集成**：将邮件事件发送到消息队列
-3. **REST API集成**：提供REST API接口暴露邮件功能
-4. **WebSocket集成**：实时推送邮件通知
-5. **微服务集成**：作为独立的邮件微服务
+## 🤝 贡献
 
-### 自定义扩展
+欢迎提交Issue和Pull Request来帮助改进这个项目！
 
-1. **自定义邮件过滤器**：实现特定的邮件过滤逻辑
-2. **自定义内容解析器**：处理特殊格式的邮件内容
-3. **自定义存储策略**：实现不同的附件存储方式
-4. **自定义重试策略**：实现更复杂的重试逻辑
-5. **自定义监控指标**：收集和暴露邮件处理的监控指标
+## 📞 支持
 
-## 贡献指南
+如果你在使用过程中遇到问题，可以通过以下方式获取帮助：
 
-我们欢迎各种形式的贡献，包括但不限于：
-
-- 报告问题和建议
-- 提交代码改进
-- 完善文档
-- 添加新功能
-- 修复bug
-
-请遵循以下步骤：
-
-1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建Pull Request
-
-## 版本历史
-
-- **1.0.0** (2023-05-15): 首次发布
-  - 基本的邮件监听、处理和发送功能
-  - 支持IMAP协议
-  - 支持附件处理
-  - 支持多种邮件处理方式
-
-## 许可证
-
-本项目采用MIT许可证。详情请参阅[LICENSE](LICENSE)文件。
-
-## 联系方式
-
-- 项目维护者：[Your Name](mailto:your.email@example.com)
-- 项目主页：[GitHub](https://github.com/yourusername/JavaEmailSpringBoot)
+- 提交 [GitHub Issue](https://github.com/sunyblog/easymail/issues)
+- 发送邮件至：contact@sunyblog.cn
+- 查看 [Wiki文档](https://github.com/sunyblog/easymail/wiki)
 
 ---
 
-如果你觉得这个项目有用，请给它一个星标 ⭐️
+**EasyMail** - 让邮件处理变得简单高效！ 🚀

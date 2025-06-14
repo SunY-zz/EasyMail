@@ -1,14 +1,12 @@
 package cn.sunyblog.javaemaildemo.mail;
 
 import cn.sunyblog.javaemaildemo.api.EmailListenerApi;
-import cn.sunyblog.javaemaildemo.example.FunctionalEmailProcessorExample;
 import cn.sunyblog.javaemaildemo.processor.config.AnnotationDrivenEmailProcessorManager;
 import cn.sunyblog.javaemaildemo.processor.handler.EmailContext;
 import cn.sunyblog.javaemaildemo.processor.handler.EmailContextBuilder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -17,8 +15,6 @@ import javax.mail.Flags;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author suny
@@ -75,18 +71,17 @@ public class MailProcessor {
                 from = contentParser.decodeText(fromAddresses[0].toString());
             }
 
-            // 解析邮件内容
-            String emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
-
+            // 解析邮件内容（只解析一次）
+            String emailContent = null;
+            
             // 处理邮件
             boolean processed = false;
             
-            // 优先使用注解驱动处理器
-            if (annotationProcessorManager != null && emailContextBuilder != null) {
+            // 首先尝试使用注解驱动处理器
+            if (annotationProcessorManager != null) {
                 try {
-                    EmailContext emailContext = emailContextBuilder.buildContext(message, null);
-                    annotationProcessorManager.processEmail(emailContext.getMessage(), null);
-                    processed = true;
+                    // 直接使用原始message，避免重复解析
+                    processed = annotationProcessorManager.processEmail(message, mailConfig.getAttachmentDir());
                     log.info("注解驱动邮件处理完成");
                 } catch (Exception e) {
                     log.error("注解驱动处理器处理失败，回退到其他处理器: {}", e.getMessage(), e);
@@ -96,6 +91,10 @@ public class MailProcessor {
             // 使用函数式处理方式
             if (!processed && emailProcessorFunction != null) {
                 try {
+                    // 只有在需要时才解析邮件内容
+                    if (emailContent == null) {
+                        emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
+                    }
                     Object result = emailProcessorFunction.process(message, emailContent, subject, from);
                     processed = (result != null);
                     log.info("函数式邮件处理结果: {}", result);
@@ -106,6 +105,10 @@ public class MailProcessor {
             // 其次使用接口方式
             else if (!processed && emailListenerApi != null) {
                 try {
+                    // 只有在需要时才解析邮件内容
+                    if (emailContent == null) {
+                        emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
+                    }
                     processed = emailListenerApi.processEmail(message, emailContent, subject, from);
                     log.info("邮件处理器[{}]处理结果: {}", emailListenerApi.getProcessorName(), processed);
                 } catch (Exception e) {
@@ -114,6 +117,10 @@ public class MailProcessor {
             } 
             // 最后使用默认处理方法
             else if (!processed) {
+                // 只有在需要时才解析邮件内容
+                if (emailContent == null) {
+                    emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
+                }
                 processed = processVerificationCodeEmail(subject, emailContent);
             }
 

@@ -57,7 +57,8 @@ public class EmailSendMonitor {
     }
     
     /**
-     * 记录邮件发送结果
+     * 记录发送结果
+     * @param result 发送结果
      */
     public void recordSendResult(SendResult result) {
         if (result == null) {
@@ -135,6 +136,7 @@ public class EmailSendMonitor {
     
     /**
      * 获取发送统计信息
+     * @return 统计信息映射
      */
     public Map<String, Object> getStatistics() {
         Map<String, Object> stats = new HashMap<>();
@@ -170,6 +172,7 @@ public class EmailSendMonitor {
     
     /**
      * 获取错误统计
+     * @return 错误统计映射
      */
     public Map<String, Long> getErrorStatistics() {
         Map<String, Long> errors = new HashMap<>();
@@ -179,6 +182,7 @@ public class EmailSendMonitor {
     
     /**
      * 获取每小时发送统计
+     * @return 每小时统计映射
      */
     public Map<String, Long> getHourlyStatistics() {
         Map<String, Long> hourly = new HashMap<>();
@@ -188,6 +192,8 @@ public class EmailSendMonitor {
     
     /**
      * 获取最近的发送记录
+     * @param limit 限制数量
+     * @return 发送记录列表
      */
     public List<SendRecord> getRecentSendHistory(int limit) {
         List<SendRecord> recent = new ArrayList<>();
@@ -204,6 +210,7 @@ public class EmailSendMonitor {
     
     /**
      * 获取发送趋势（最近24小时）
+     * @return 发送趋势数据
      */
     public Map<String, Object> getSendTrend() {
         Map<String, Object> trend = new HashMap<>();
@@ -239,6 +246,7 @@ public class EmailSendMonitor {
     
     /**
      * 获取健康状态
+     * @return 健康状态信息
      */
     public Map<String, Object> getHealthStatus() {
         Map<String, Object> health = new HashMap<>();
@@ -299,6 +307,7 @@ public class EmailSendMonitor {
     
     /**
      * 生成监控报告
+     * @return 监控报告字符串
      */
     public String generateReport() {
         StringBuilder report = new StringBuilder();
