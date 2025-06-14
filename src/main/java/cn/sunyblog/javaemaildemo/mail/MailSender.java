@@ -1,5 +1,6 @@
 package cn.sunyblog.javaemaildemo.mail;
 
+import cn.sunyblog.javaemaildemo.util.RetryUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -47,8 +48,8 @@ public class MailSender {
                 return new PasswordAuthentication(username, smtpConfig.getPassword());
             }
         });
-        // 设置调试模式
-        session.setDebug(true); // 启用调试模式以获取详细错误信息
+        // 设置调试模式，默认关闭
+        session.setDebug(smtpConfig.getLog().isDebugEnabled()); // 启用调试模式以获取详细错误信息
         return session;
     }
 
@@ -329,78 +330,117 @@ public class MailSender {
      * @return 是否发送成功
      */
     private boolean sendEmail(String to, String cc, String bcc, String subject, String content, boolean isHtml, List<File> attachments) {
-        try {
-            // 打印SMTP配置信息用于调试
-            log.info("SMTP配置信息 - 服务器: {}, 端口: {}, 用户名: {}, 认证: {}, STARTTLS: {}", 
-                    smtpConfig.getServer(), 
-                    smtpConfig.getPort(), 
-                    smtpConfig.getUsername(), 
-                    smtpConfig.getProperties().isMailSmtpAuth(),
-                    smtpConfig.getProperties().isMailSmtpStarttlsEnable());
-            
-            Session session = createSession();
-            MimeMessage message = new MimeMessage(session);
-            
-            // 设置发件人 - 使用完整邮箱地址
-            message.setFrom(new InternetAddress(smtpConfig.getUsername(), "JavaEmailDemo", "UTF-8"));
-            
-            // 设置收件人
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
-            
-            // 设置抄送人
-            if (cc != null && !cc.isEmpty()) {
-                message.setRecipients(Message.RecipientType.CC, InternetAddress.parse(cc));
-            }
-            
-            // 设置密送人
-            if (bcc != null && !bcc.isEmpty()) {
-                message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(bcc));
-            }
-            
-            // 设置主题
-            message.setSubject(subject, "UTF-8");
-            
-            // 设置发送时间
-            message.setSentDate(new Date());
-            
-            // 创建多部分消息
-            Multipart multipart = new MimeMultipart();
-            
-            // 创建邮件正文
-            MimeBodyPart messageBodyPart = new MimeBodyPart();
-            if (isHtml) {
-                messageBodyPart.setContent(content, "text/html;charset=UTF-8");
-            } else {
-                messageBodyPart.setText(content, "UTF-8");
-            }
-            multipart.addBodyPart(messageBodyPart);
-            
-            // 添加附件
-            if (attachments != null && !attachments.isEmpty()) {
-                for (File file : attachments) {
-                    MimeBodyPart attachmentPart = new MimeBodyPart();
-                    DataSource source = new FileDataSource(file);
-                    attachmentPart.setDataHandler(new DataHandler(source));
-                    attachmentPart.setFileName(MimeUtility.encodeText(file.getName()));
-                    multipart.addBodyPart(attachmentPart);
-                }
-            }
-            
-            // 设置邮件内容
-            message.setContent(multipart);
-            
-            // 发送邮件
+        // 如果重试功能未启用，直接调用原始发送方法
+        if (!smtpConfig.getRetry().isEnabled()) {
             try {
-                Transport.send(message);
-            } catch (Exception e) {
-                log.error("邮件发送失败: {}", e.getMessage(), e);
+                boolean sendEmailInternal = sendEmailInternal(to, cc, bcc, subject, content, isHtml, attachments);
+                return sendEmailInternal;
+            } catch (MessagingException e) {
+                throw new RuntimeException(e);
+            } catch (UnsupportedEncodingException e) {
                 throw new RuntimeException(e);
             }
-            log.info("邮件发送成功，收件人: {}, 主题: {}", to, subject);
-            return true;
-        } catch (MessagingException | UnsupportedEncodingException e) {
-            log.error("邮件发送失败: {}", e.getMessage(), e);
+        }
+        
+        // 配置重试策略
+        RetryUtil.RetryConfig retryConfig = RetryUtil.RetryConfig.defaults()
+                .maxAttempts(smtpConfig.getRetry().getMaxRetries() + 1) // +1是因为包括第一次尝试
+                .initialDelayMs(smtpConfig.getRetry().getInitialDelayMs())
+                .maxDelayMs(smtpConfig.getRetry().getMaxDelayMs())
+                .useExponentialBackoff(smtpConfig.getRetry().isUseExponentialBackoff())
+                .backoffMultiplier(smtpConfig.getRetry().getBackoffMultiplier())
+                .retryableExceptions(
+                    MessagingException.class,
+                    SendFailedException.class,
+                    javax.mail.MessagingException.class
+                );
+        
+        try {
+            // 使用重试工具执行邮件发送
+            return RetryUtil.executeWithRetry(() -> sendEmailInternal(to, cc, bcc, subject, content, isHtml, attachments), retryConfig);
+        } catch (Exception e) {
+            log.error("邮件发送失败，已达到最大重试次数: {}", e.getMessage(), e);
             return false;
         }
+    }
+    
+    /**
+     * 内部邮件发送方法，实际执行发送邮件的逻辑
+     *
+     * @param to 收件人邮箱
+     * @param cc 抄送人邮箱
+     * @param bcc 密送人邮箱
+     * @param subject 邮件主题
+     * @param content 邮件内容
+     * @param isHtml 是否为HTML格式
+     * @param attachments 附件列表
+     * @return 是否发送成功
+     * @throws MessagingException 如果发送过程中出现异常
+     * @throws UnsupportedEncodingException 如果编码过程中出现异常
+     */
+    public boolean sendEmailInternal(String to, String cc, String bcc, String subject, String content, boolean isHtml, List<File> attachments) throws MessagingException, UnsupportedEncodingException {
+        // 打印SMTP配置信息用于调试
+        log.info("SMTP配置信息 - 服务器: {}, 端口: {}, 用户名: {}, 认证: {}, STARTTLS: {}", 
+                smtpConfig.getServer(), 
+                smtpConfig.getPort(), 
+                smtpConfig.getUsername(), 
+                smtpConfig.getProperties().isMailSmtpAuth(),
+                smtpConfig.getProperties().isMailSmtpStarttlsEnable());
+        
+        Session session = createSession();
+        MimeMessage message = new MimeMessage(session);
+        
+        // 设置发件人 - 使用完整邮箱地址
+        message.setFrom(new InternetAddress(smtpConfig.getUsername(), "JavaEmailDemo", "UTF-8"));
+        
+        // 设置收件人
+        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
+        
+        // 设置抄送人
+        if (cc != null && !cc.isEmpty()) {
+            message.setRecipients(Message.RecipientType.CC, InternetAddress.parse(cc));
+        }
+        
+        // 设置密送人
+        if (bcc != null && !bcc.isEmpty()) {
+            message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(bcc));
+        }
+        
+        // 设置主题
+        message.setSubject(subject, "UTF-8");
+        
+        // 设置发送时间
+        message.setSentDate(new Date());
+        
+        // 创建多部分消息
+        Multipart multipart = new MimeMultipart();
+        
+        // 创建邮件正文
+        MimeBodyPart messageBodyPart = new MimeBodyPart();
+        if (isHtml) {
+            messageBodyPart.setContent(content, "text/html;charset=UTF-8");
+        } else {
+            messageBodyPart.setText(content, "UTF-8");
+        }
+        multipart.addBodyPart(messageBodyPart);
+        
+        // 添加附件
+        if (attachments != null && !attachments.isEmpty()) {
+            for (File file : attachments) {
+                MimeBodyPart attachmentPart = new MimeBodyPart();
+                DataSource source = new FileDataSource(file);
+                attachmentPart.setDataHandler(new DataHandler(source));
+                attachmentPart.setFileName(MimeUtility.encodeText(file.getName()));
+                multipart.addBodyPart(attachmentPart);
+            }
+        }
+        
+        // 设置邮件内容
+        message.setContent(multipart);
+        
+        // 发送邮件
+        Transport.send(message);
+        log.info("邮件发送成功，收件人: {}, 主题: {}", to, subject);
+        return true;
     }
 }

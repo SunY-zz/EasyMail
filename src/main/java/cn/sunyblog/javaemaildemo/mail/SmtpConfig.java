@@ -47,6 +47,16 @@ public class SmtpConfig {
     private Properties properties = new Properties();
     
     /**
+     * 重试配置
+     */
+    private RetryConfig retry = new RetryConfig();
+
+    /**
+     * 日志配置
+     */
+    private Log log = new Log();
+    
+    /**
      * 连接配置类，用于配置邮件连接的超时参数
      */
     @Data
@@ -81,5 +91,16 @@ public class SmtpConfig {
          * 是否启用STARTTLS
          */
         private boolean mailSmtpStarttlsEnable = true;
+    }
+
+    /**
+     * 日志配置类
+     */
+    @Data
+    public static class Log {
+        /**
+         * 是否启用调试日志
+         */
+        private boolean debugEnabled = false;
     }
 }

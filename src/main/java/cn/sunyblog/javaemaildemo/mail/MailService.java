@@ -36,7 +36,7 @@ public class MailService {
     /**
      * 服务初始化
      */
-    //@PostConstruct
+    @PostConstruct
     public void init() {
         log.info("邮件监听服务初始化开始");
         if (autoStart) {

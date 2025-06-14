@@ -51,7 +51,7 @@ public class MailListener {
     public void startListening(MailServerConnector serverConnector) {
         int retryCount = 0;
         int maxRetries = mailConfig.getListener().getMaxRetries(); // 最大重试次数
-        long retryDelay = mailConfig.getMonitor().getShortDelay() * 1000; // 重试延迟(毫秒)
+        long retryDelay = mailConfig.getMonitor().getShortDelay() * 1000L; // 重试延迟(毫秒)
 
         while (retryCount < maxRetries) {
             try {
@@ -397,13 +397,27 @@ public class MailListener {
                         log.warn("邮件连接已断开，等待主线程重连");
                     }
                     TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getKeepAliveInterval());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    if (isRunning.get()) {
+                        log.warn("保活线程被中断: {}", e.getMessage());
+                    } else {
+                        log.debug("邮件监听服务已停止，保活线程正常退出");
+                    }
+                    break;
                 } catch (Exception e) {
-                    log.warn("保活线程异常: {}", e.getMessage());
-                    try {
-                        TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        log.warn("线程被中断");
+                    if (isRunning.get()) {
+                        log.warn("保活线程异常: {}", e.getMessage());
+                        try {
+                            TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            log.debug("保活线程被中断，准备退出");
+                            break;
+                        }
+                    } else {
+                        log.debug("邮件监听服务已停止，保活线程退出");
+                        break;
                     }
                 }
             }
@@ -418,6 +432,12 @@ public class MailListener {
      * 检查新邮件（轮询方式）
      */
     private void checkNewMessages() {
+        // 如果服务已停止运行，直接返回
+        if (!isRunning.get()) {
+            log.debug("邮件监听服务已停止，跳过邮件检查");
+            return;
+        }
+        
         // 如果正在处理事件通知，则跳过本次轮询
         if (processingEvent.get()) {
             log.debug("正在处理邮件事件，跳过本次轮询");
@@ -426,6 +446,13 @@ public class MailListener {
 
         try {
             log.debug("开始检查新邮件");
+            
+            // 再次检查运行状态，避免在打开文件夹过程中服务被停止
+            if (!isRunning.get()) {
+                log.debug("邮件监听服务已停止，终止邮件检查");
+                return;
+            }
+            
             if (!folder.isOpen()) {
                 folder.open(Folder.READ_WRITE);
                 // 重新添加监听器
@@ -453,8 +480,20 @@ public class MailListener {
             } else {
                 log.debug("轮询检查：没有新邮件");
             }
+        } catch (IllegalStateException e) {
+            // 文件夹已关闭的异常，在服务停止时是正常现象，不记录为错误
+            if (!isRunning.get()) {
+                log.debug("邮件监听服务已停止，文件夹操作被中断: {}", e.getMessage());
+            } else {
+                log.warn("文件夹状态异常: {}", e.getMessage());
+            }
         } catch (Exception e) {
-            log.error("轮询检查邮件异常: {}", e.getMessage(), e);
+            // 只有在服务运行时才记录为错误
+            if (isRunning.get()) {
+                log.error("轮询检查邮件异常: {}", e.getMessage(), e);
+            } else {
+                log.debug("邮件监听服务已停止，操作被中断: {}", e.getMessage());
+            }
         }
     }
 

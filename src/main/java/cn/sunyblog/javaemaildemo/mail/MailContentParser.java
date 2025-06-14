@@ -6,6 +6,8 @@ import javax.mail.*;
 import javax.mail.internet.MimeUtility;
 import java.io.*;
 import java.nio.file.Files;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author suny
@@ -210,5 +212,81 @@ public class MailContentParser {
             log.error("解码文本失败: {}", e.getMessage(), e);
             return text;
         }
+    }
+
+    /**
+     * 提取验证码的方法
+     * @param content 邮件内容
+     * @return 验证码，如果没有找到则返回null
+     */
+    public String extractVerificationCode(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return null;
+        }
+        
+        // 排除时间戳和其他常见误识别内容的关键词
+        String[] excludeKeywords = {
+            "年", "月", "日", "时", "分", "秒",
+            "GMT", "UTC", "CST", "EST", "PST",
+            "发送时间", "接收时间", "创建时间", "更新时间",
+            "订单号", "流水号", "交易号", "单号",
+            "电话", "手机", "座机", "传真",
+            "邮编", "区号", "身份证",
+            "IP", "端口", "PORT"
+        };
+        
+        // 常见的验证码模式：4-8位数字或字母数字组合
+        String[] patterns = {
+            "(?i)(?:验证码|verification\\s*code|auth\\s*code|code)[：:：\\s]*([A-Z0-9]{4,8})",  // 验证码：XXXX
+            "(?i)(?:验证码|verification\\s*code|auth\\s*code|code)[：:：\\s]*([0-9]{4,8})",     // 验证码：1234
+            "(?i)(?:动态码|dynamic\\s*code)[：:：\\s]*([A-Z0-9]{4,8})",                      // 动态码
+            "(?i)(?:安全码|security\\s*code)[：:：\\s]*([A-Z0-9]{4,8})",                      // 安全码
+            "\\b([0-9]{6})\\b",                                                            // 独立的6位数字
+            "\\b([0-9]{4})\\b",                                                            // 独立的4位数字
+            "\\b([A-Z0-9]{6})\\b",                                                         // 独立的6位字母数字
+            "\\b([A-Z0-9]{4})\\b"                                                          // 独立的4位字母数字
+        };
+        
+        for (String pattern : patterns) {
+            Pattern regex = Pattern.compile(pattern);
+            Matcher matcher = regex.matcher(content);
+            while (matcher.find()) {
+                String code = matcher.group(1);
+                
+                // 检查是否包含排除关键词
+                boolean shouldExclude = false;
+                String contextBefore = content.substring(Math.max(0, matcher.start() - 50), matcher.start());
+                String contextAfter = content.substring(matcher.end(), Math.min(content.length(), matcher.end() + 50));
+                String fullContext = contextBefore + code + contextAfter;
+                
+                for (String keyword : excludeKeywords) {
+                    if (fullContext.contains(keyword)) {
+                        shouldExclude = true;
+                        log.debug("排除验证码候选 '{}' 因为包含关键词 '{}'", code, keyword);
+                        break;
+                    }
+                }
+                
+                // 排除明显的年份（1900-2100）
+                if (!shouldExclude && code.matches("^(19|20)\\d{2}$")) {
+                    shouldExclude = true;
+                    log.debug("排除验证码候选 '{}' 因为是年份格式", code);
+                }
+                
+                // 排除明显的时间格式（如：2359, 1200等）
+                if (!shouldExclude && code.matches("^([01]\\d|2[0-3])[0-5]\\d$")) {
+                    shouldExclude = true;
+                    log.debug("排除验证码候选 '{}' 因为是时间格式", code);
+                }
+                
+                if (!shouldExclude) {
+                    log.debug("使用模式 '{}' 提取到验证码: {}", pattern, code);
+                    return code;
+                }
+            }
+        }
+        
+        log.debug("未在内容中找到验证码: {}", content.substring(0, Math.min(100, content.length())));
+        return null;
     }
 }

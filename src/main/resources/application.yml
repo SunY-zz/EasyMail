@@ -4,17 +4,17 @@ server:
 # 邮件配置
 mail:
   imap:
-    server: imap.163.com
+    server: imap.qq.com
     port: 993
     protocol: imaps
-    username: 15922557394@163.com # 邮箱
-    password: GPgLhXKhwcYa4zsX    # QQ邮箱的授权码
+#    username: 15922557394@163.com # 邮箱
+#    password: GPgLhXKhwcYa4zsX    # QQ邮箱的授权码
 #    username: 15922557394@139.com # 邮箱
 #    password: b912e955273e26792e00  # QQ邮箱的授权码
 #    username: 3881533988@qq.com # 邮箱
 #    password: snjvbipqmiafccfa  # QQ邮箱的授权码
-#    username: 3379652824@qq.com # 邮箱
-#    password: tkfrljmhkckhdbdi  # QQ邮箱的授权码
+    username: 3379652824@qq.com # 邮箱
+    password: tkfrljmhkckhdbdi  # QQ邮箱的授权码
 #    username: daliyuan702@sina.com # 邮箱
 #    password: 7981df879cb97fb6  # QQ邮箱的授权码
     attachment-dir: D:\ # 附件保存目录
@@ -53,4 +53,44 @@ mail:
     properties:
       mail-smtp-auth: true # 启用SMTP认证
       mail-smtp-starttls-enable: false # 启用STARTTLS
+    retry:
+      enabled: true # 是否启用重试机制
+      max-retries: 3 # 最大重试次数
+      initial-delay-ms: 1000 # 初始重试延迟(毫秒)
+      max-delay-ms: 10000 # 最大重试延迟(毫秒)
+      use-exponential-backoff: true # 是否使用指数退避策略
+      backoff-multiplier: 2.0 # 退避乘数
+    log:
+      debug-enabled: false # 是否启用调试日志
 
+# 注解驱动邮件处理器配置
+annotation-driven-email-processor:
+  enabled: true
+  scan:
+    packages:
+      - cn.sunyblog.javaemaildemo.example
+      - cn.sunyblog.javaemaildemo.processor
+
+# 日志配置
+logging:
+  level:
+    cn.sunyblog.javaemaildemo.processor: DEBUG
+    cn.sunyblog.javaemaildemo.mail: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p %pid --- [%15.15t] %-40.40logger{39} : %m%n"
+
+# Spring Boot配置
+spring:
+  profiles:
+    active: email-processor
+
+  # 应用配置
+  application:
+    name: JavaEmailDemo
+
+  # 开发工具配置
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true

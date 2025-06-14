@@ -24,7 +24,7 @@ public class ThreadPoolConfig {
     private int queueCapacity;  // 阻塞队列容量
 
     @Bean
-    public ExecutorService noticeThreadPool() {
+    public ThreadPoolExecutor noticeThreadPool() {
         // 使用自定义的线程工厂
         ThreadFactory threadFactory = new ThreadFactory() {
             //volatile修饰的变量，保证线程安全
@@ -42,7 +42,7 @@ public class ThreadPoolConfig {
         };
 
         // 创建线程池
-        return new ThreadPoolExecutor(
+        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(
                 corePoolSize,  // 核心线程数
                 maximumPoolSize,  // 最大线程数
                 keepAliveTime,  // 空闲线程存活时间
@@ -51,5 +51,10 @@ public class ThreadPoolConfig {
                 threadFactory,  // 线程工厂
                 rejectedExecutionHandler  // 拒绝策略
         );
+        
+        log.info("线程池配置完成 - 核心线程数: {}, 最大线程数: {}, 队列容量: {}", 
+                corePoolSize, maximumPoolSize, queueCapacity);
+        
+        return threadPoolExecutor;
     }
 }
