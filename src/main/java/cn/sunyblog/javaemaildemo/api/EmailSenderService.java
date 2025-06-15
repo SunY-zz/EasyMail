@@ -1,7 +1,7 @@
 package cn.sunyblog.javaemaildemo.api;
 
-import cn.sunyblog.javaemaildemo.mail.EmailTemplate;
-import cn.sunyblog.javaemaildemo.mail.SendResult;
+import cn.sunyblog.javaemaildemo.send.template.EmailTemplate;
+import cn.sunyblog.javaemaildemo.send.SendResult;
 
 import java.io.File;
 import java.util.List;
@@ -17,6 +17,25 @@ import java.util.function.Consumer;
  * @version 1.0.0
  */
 public interface EmailSenderService {
+    
+    // ==================== 新的Builder模式API ====================
+    
+    /**
+     * 使用EmailRequest发送邮件（推荐使用）
+     * 提供更友好的链式调用API
+     * 
+     * @param request 邮件请求对象
+     * @return 发送结果
+     */
+    SendResult send(EmailRequest request);
+    
+    /**
+     * 异步发送邮件（使用EmailRequest）
+     * 
+     * @param request 邮件请求对象
+     * @return 异步发送结果
+     */
+    CompletableFuture<SendResult> sendAsync(EmailRequest request);
     
     // ==================== 基础发送方法 ====================
     

@@ -1,4 +1,6 @@
 package cn.sunyblog.javaemaildemo.mail;
+
+import cn.sunyblog.javaemaildemo.send.MailSender;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -9,6 +11,7 @@ import javax.annotation.Resource;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * @author suny
  * @version 1.0

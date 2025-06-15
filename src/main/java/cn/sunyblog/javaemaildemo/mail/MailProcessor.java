@@ -1,8 +1,8 @@
 package cn.sunyblog.javaemaildemo.mail;
 
 import cn.sunyblog.javaemaildemo.api.EmailListenerApi;
+import cn.sunyblog.javaemaildemo.config.MailConfig;
 import cn.sunyblog.javaemaildemo.processor.config.AnnotationDrivenEmailProcessorManager;
-import cn.sunyblog.javaemaildemo.processor.handler.EmailContext;
 import cn.sunyblog.javaemaildemo.processor.handler.EmailContextBuilder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +41,8 @@ public class MailProcessor {
     
     @Autowired(required = false)
     private EmailContextBuilder emailContextBuilder;
+
+    @Autowired(required = false)
     private EmailProcessorFunction emailProcessorFunction;
 
     /**
@@ -62,7 +64,7 @@ public class MailProcessor {
 
             long startTime = System.currentTimeMillis();
             String subject = mailCache.getSubjectSafely(message);
-            log.info("开始处理邮件，主题: {}", subject);
+            log.debug("开始处理邮件，主题: {}", subject);
 
             // 获取发件人
             String from = "(未知发件人)";
@@ -72,7 +74,7 @@ public class MailProcessor {
             }
 
             // 解析邮件内容（只解析一次）
-            String emailContent = null;
+            String emailContent;
             
             // 处理邮件
             boolean processed = false;
@@ -92,9 +94,7 @@ public class MailProcessor {
             if (!processed && emailProcessorFunction != null) {
                 try {
                     // 只有在需要时才解析邮件内容
-                    if (emailContent == null) {
-                        emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
-                    }
+                    emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
                     Object result = emailProcessorFunction.process(message, emailContent, subject, from);
                     processed = (result != null);
                     log.info("函数式邮件处理结果: {}", result);
@@ -106,9 +106,7 @@ public class MailProcessor {
             else if (!processed && emailListenerApi != null) {
                 try {
                     // 只有在需要时才解析邮件内容
-                    if (emailContent == null) {
-                        emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
-                    }
+                    emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
                     processed = emailListenerApi.processEmail(message, emailContent, subject, from);
                     log.info("邮件处理器[{}]处理结果: {}", emailListenerApi.getProcessorName(), processed);
                 } catch (Exception e) {
@@ -118,9 +116,7 @@ public class MailProcessor {
             // 最后使用默认处理方法
             else if (!processed) {
                 // 只有在需要时才解析邮件内容
-                if (emailContent == null) {
-                    emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
-                }
+                emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
                 processed = processVerificationCodeEmail(subject, emailContent);
             }
 

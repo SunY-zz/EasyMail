@@ -1,10 +1,8 @@
 package cn.sunyblog.javaemaildemo.config;
 
 import cn.sunyblog.javaemaildemo.api.EmailListenerApi;
-import cn.sunyblog.javaemaildemo.api.EmailListenerProperties;
 import cn.sunyblog.javaemaildemo.mail.*;
-import cn.sunyblog.javaemaildemo.config.ThreadPoolConfig;
-import cn.sunyblog.javaemaildemo.config.SSLTrustInitializer;
+import cn.sunyblog.javaemaildemo.send.MailSender;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

@@ -1,6 +1,6 @@
 package cn.sunyblog.javaemaildemo.monitor;
 
-import cn.sunyblog.javaemaildemo.mail.SendResult;
+import cn.sunyblog.javaemaildemo.send.SendResult;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

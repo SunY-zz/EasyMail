@@ -63,7 +63,7 @@ public class AnnotationDrivenEmailProcessorManager {
             // 构建邮件上下文
             EmailContext context = contextBuilder.buildContext(message, attachmentDir);
             
-            log.info("开始处理邮件 - 主题: {}, 发件人: {}", 
+            log.debug("开始处理邮件 - 主题: {}, 发件人: {}", 
                     context.getSubject(), context.getFrom());
             
             // 执行处理器
@@ -200,11 +200,11 @@ public class AnnotationDrivenEmailProcessorManager {
      * 记录配置信息
      */
     private void logConfiguration() {
-        log.info("注解驱动邮件处理器配置:");
-        log.info("  - 启用状态: {}", properties.isEnabled());
+        log.debug("注解驱动邮件处理器配置:");
+        log.debug("  - 启用状态: {}", properties.isEnabled());
         
         if (properties.getScan().getPackages().length > 0) {
-            log.info("  - 扫描包路径: {}", String.join(", ", properties.getScan().getPackages()));
+            log.debug("  - 扫描包路径: {}", String.join(", ", properties.getScan().getPackages()));
         }
     }
 }

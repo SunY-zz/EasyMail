@@ -1,6 +1,6 @@
-package cn.sunyblog.javaemaildemo.strategy;
+package cn.sunyblog.javaemaildemo.send.strategy;
 
-import cn.sunyblog.javaemaildemo.mail.SendResult;
+import cn.sunyblog.javaemaildemo.send.SendResult;
 
 import java.io.File;
 import java.util.List;

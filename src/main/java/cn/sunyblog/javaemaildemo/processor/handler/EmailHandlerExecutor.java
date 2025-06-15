@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
 import javax.annotation.Resource;
-import javax.mail.Message;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,7 +43,7 @@ public class EmailHandlerExecutor {
             return false;
         }
         
-        log.info("找到 {} 个匹配的邮件处理器，主题: {}", matchingHandlers.size(), context.getSubject());
+        log.debug("找到 {} 个匹配的邮件处理器，主题: {}", matchingHandlers.size(), context.getSubject());
         
         boolean hasSuccess = false;
         
@@ -85,7 +84,7 @@ public class EmailHandlerExecutor {
             Object result = invokeHandler(handlerInfo, context);
             
             long duration = System.currentTimeMillis() - startTime;
-            log.info("同步执行邮件处理器 [{}] 完成，耗时: {}ms，结果: {}", 
+            log.debug("同步执行邮件处理器 [{}] 完成，耗时: {}ms，结果: {}", 
                     handlerInfo.getName(), duration, result);
             
             return result != null;
@@ -110,7 +109,7 @@ public class EmailHandlerExecutor {
                 Object result = invokeHandler(handlerInfo, context);
                 
                 long duration = System.currentTimeMillis() - startTime;
-                log.info("异步执行邮件处理器 [{}] 完成，耗时: {}ms，结果: {}", 
+                log.debug("异步执行邮件处理器 [{}] 完成，耗时: {}ms，结果: {}", 
                         handlerInfo.getName(), duration, result);
                 
             } catch (Exception e) {

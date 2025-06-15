@@ -1,4 +1,5 @@
 package cn.sunyblog.javaemaildemo.mail;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -124,9 +125,8 @@ public class MailContentParser {
      * @param bodyPart 邮件体部分
      * @param saveDir  保存目录
      * @throws MessagingException 邮件异常
-     * @throws IOException        IO异常
      */
-    private void parseAttachment(BodyPart bodyPart, String saveDir) throws MessagingException, IOException {
+    private void parseAttachment(BodyPart bodyPart, String saveDir) throws MessagingException {
         String disposition = bodyPart.getDisposition();
 
         if (disposition != null && disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {

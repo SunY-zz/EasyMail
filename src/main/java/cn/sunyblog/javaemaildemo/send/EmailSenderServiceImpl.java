@@ -1,9 +1,13 @@
-package cn.sunyblog.javaemaildemo.mail;
+package cn.sunyblog.javaemaildemo.send;
 
 import cn.sunyblog.javaemaildemo.api.EmailSenderService;
-import cn.sunyblog.javaemaildemo.event.EmailSendEventListener;
-import cn.sunyblog.javaemaildemo.monitor.EmailSendMonitor;
-import cn.sunyblog.javaemaildemo.strategy.EmailSendStrategyManager;
+import cn.sunyblog.javaemaildemo.api.EmailRequest;
+import cn.sunyblog.javaemaildemo.config.SmtpConfig;
+import cn.sunyblog.javaemaildemo.send.template.EmailTemplate;
+import cn.sunyblog.javaemaildemo.send.template.EmailTemplateManager;
+import cn.sunyblog.javaemaildemo.send.event.EmailSendEventListener;
+import cn.sunyblog.javaemaildemo.send.monitor.EmailSendMonitor;
+import cn.sunyblog.javaemaildemo.send.strategy.EmailSendStrategyManager;
 import cn.sunyblog.javaemaildemo.util.RetryUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -58,6 +62,68 @@ public class EmailSenderServiceImpl implements EmailSenderService {
     private final AtomicLong totalFailedCount = new AtomicLong(0);
     private final AtomicLong totalRetryCount = new AtomicLong(0);
     private final AtomicLong totalDuration = new AtomicLong(0);
+    
+    // ==================== 新的Builder模式API实现 ====================
+    
+    @Override
+    public SendResult send(EmailRequest request) {
+        // 验证请求
+        EmailRequest.ValidationResult validation = request.validate();
+        if (!validation.isValid()) {
+            return SendResult.failure(request.getToList(), request.getSubject(), 
+                    validation.getErrorMessage(), 0);
+        }
+        
+        try {
+            // 如果是模板邮件
+            if (request.isTemplate()) {
+                EmailTemplate template = templateManager.getTemplate(request.getTemplateId());
+                if (template == null) {
+                    return SendResult.failure(request.getToList(), request.getSubject(), 
+                            "模板不存在: " + request.getTemplateId(), 0);
+                }
+                
+                String subject = template.generateSubject(request.getTemplateVariables());
+                String content = template.generateContent(request.getTemplateVariables());
+                
+                return send(request.getToList(), request.getCcList(), request.getBccList(),
+                        subject, content, template.isHtml(), 
+                        mergeAttachments(request.getAttachments(), template.getDefaultAttachments()));
+            }
+            
+            // 普通邮件
+            return send(request.getToList(), request.getCcList(), request.getBccList(),
+                    request.getSubject(), request.getContent(), request.isHtml(), 
+                    request.getAttachments());
+                    
+        } catch (Exception e) {
+            log.error("使用EmailRequest发送邮件失败: {}", e.getMessage(), e);
+            return SendResult.failure(request.getToList(), request.getSubject(), 
+                    e.getMessage(), 0);
+        }
+    }
+    
+    @Override
+    public CompletableFuture<SendResult> sendAsync(EmailRequest request) {
+        if (request.isAsync()) {
+            return CompletableFuture.supplyAsync(() -> send(request), executor);
+        }
+        return CompletableFuture.completedFuture(send(request));
+    }
+    
+    /**
+     * 合并附件列表
+     */
+    private List<File> mergeAttachments(List<File> requestAttachments, List<File> templateAttachments) {
+        List<File> merged = new ArrayList<>();
+        if (requestAttachments != null) {
+            merged.addAll(requestAttachments);
+        }
+        if (templateAttachments != null) {
+            merged.addAll(templateAttachments);
+        }
+        return merged.isEmpty() ? null : merged;
+    }
     
     // ==================== 基础发送方法 ====================
     
@@ -308,12 +374,10 @@ public class EmailSenderServiceImpl implements EmailSenderService {
         RetryUtil.RetryConfig retryConfig = buildRetryConfig();
         
         try {
-            boolean success = RetryUtil.executeWithRetry(() -> {
-                return mailSender.sendEmailInternal(to, 
-                    ccList != null && !ccList.isEmpty() ? String.join(",", ccList) : null,
-                    bccList != null && !bccList.isEmpty() ? String.join(",", bccList) : null,
-                    subject, content, isHtml, attachments);
-            }, retryConfig);
+            boolean success = RetryUtil.executeWithRetry(() -> mailSender.sendEmailInternal(to,
+                ccList != null && !ccList.isEmpty() ? String.join(",", ccList) : null,
+                bccList != null && !bccList.isEmpty() ? String.join(",", bccList) : null,
+                subject, content, isHtml, attachments), retryConfig);
             
             long duration = System.currentTimeMillis() - startTime;
             
@@ -411,8 +475,6 @@ public class EmailSenderServiceImpl implements EmailSenderService {
     private String getErrorCode(Exception e) {
         if (e instanceof MessagingException) {
             return "MESSAGING_ERROR";
-        } else if (e instanceof SendFailedException) {
-            return "SEND_FAILED";
         } else {
             return "UNKNOWN_ERROR";
         }

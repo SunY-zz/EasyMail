@@ -1,4 +1,4 @@
-package cn.sunyblog.javaemaildemo.mail;
+package cn.sunyblog.javaemaildemo.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 

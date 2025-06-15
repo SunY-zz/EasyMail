@@ -1,4 +1,6 @@
 package cn.sunyblog.javaemaildemo.mail;
+import cn.sunyblog.javaemaildemo.config.MailConfig;
+import cn.sunyblog.javaemaildemo.util.SSLTrustUtil;
 import com.sun.mail.imap.IMAPStore;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -104,15 +106,12 @@ public class MailServerConnector {
         final int quickRetryCount = 5;          // 快速重试次数
         final int quickRetryTimeout = 3;        // 每次快速重试的超时时间(秒)
 
-        MessagingException lastException = null;
-
         // 快速重试阶段
         for (int attempt = 1; attempt <= quickRetryCount; attempt++) {
             try {
-                log.info("连接尝试 {} (超时: {}秒)", attempt, quickRetryTimeout);
+                log.debug("连接尝试 {} (超时: {}秒)", attempt, quickRetryTimeout);
                 return attemptConnection(session, quickRetryTimeout);
             } catch (MessagingException e) {
-                lastException = e;
                 log.warn("连接尝试 {} 失败: {}", attempt, e.getMessage());
 
                 // 短暂等待后重试
@@ -126,11 +125,10 @@ public class MailServerConnector {
         }
         int connectionTimeout = mailConfig.getConnection().getTimeout() / 1000;
         // 最终尝试（使用较长超时）
-        log.info("快速重试失败，进行最终尝试 (超时: {}秒)", connectionTimeout);
+        log.debug("快速重试失败，进行最终尝试 (超时: {}秒)", connectionTimeout);
         try {
             return attemptConnection(session, connectionTimeout);
         } catch (MessagingException e) {
-            lastException = e;
             log.error("最终连接尝试失败: {}", e.getMessage());
             throw new MessagingException("多次尝试连接邮件服务器失败: " + e.getMessage(), e);
         }
@@ -157,13 +155,13 @@ public class MailServerConnector {
                     try {
                         // 构建 IMAP ID 信息
                         Map<String, String> id = new HashMap<>();
-                        id.put("name", "JavaEmailDemo");            // 客户端名称
+                        id.put("name", "easyMail");            // 客户端名称
                         id.put("version", "1.0.0");                 // 版本号
-                        id.put("vendor", "Sunyblog");               // 开发者/公司
-                        id.put("support-email", "suny@sunyblog.cn"); // 支持邮箱
+                        id.put("vendor", mailConfig.getUsername());               // 开发者/公司
+                        id.put("support-email", mailConfig.getUsername()); // 支持邮箱
 
                         ((IMAPStore) store).id(id);
-                        log.info("IMAP ID 已发送");
+                        log.debug("IMAP ID 已发送");
                     } catch (Exception e) {
                         log.warn("发送 IMAP ID 失败: {}", e.getMessage());
                     }
@@ -242,7 +240,7 @@ public class MailServerConnector {
     public Folder openInbox(Store store) throws MessagingException {
         Folder folder = store.getFolder("INBOX");
         folder.open(Folder.READ_WRITE);
-        log.info("收件箱打开成功");
+        log.debug("收件箱打开成功");
         return folder;
     }
 
@@ -256,12 +254,12 @@ public class MailServerConnector {
         try {
             if (folder != null && folder.isOpen()) {
                 folder.close(false);
-                log.info("邮件文件夹已关闭");
+                log.debug("邮件文件夹已关闭");
             }
 
             if (store != null && store.isConnected()) {
                 store.close();
-                log.info("邮件连接已关闭");
+                log.debug("邮件连接已关闭");
             }
         } catch (Exception e) {
             log.error("关闭邮件资源异常: {}", e.getMessage(), e);
@@ -277,16 +275,17 @@ public class MailServerConnector {
      */
     public void reconnectIfNeeded(Store store, Folder folder) throws MessagingException {
         if (store == null || !store.isConnected()) {
-            log.info("尝试重新连接到邮件服务器");
+            log.debug("尝试重新连接到邮件服务器");
+            assert store != null;
             store.connect(mailConfig.getServer(), mailConfig.getUsername(), mailConfig.getPassword());
-            log.info("邮件服务器重新连接成功");
+            log.debug("邮件服务器重新连接成功");
         }
 
         if (folder == null || !folder.isOpen()) {
-            log.info("尝试重新打开收件箱");
+            log.debug("尝试重新打开收件箱");
             folder = store.getFolder("INBOX");
             folder.open(Folder.READ_WRITE);
-            log.info("收件箱重新打开成功");
+            log.debug("收件箱重新打开成功");
         }
     }
 }

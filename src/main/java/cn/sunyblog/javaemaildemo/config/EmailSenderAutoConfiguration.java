@@ -1,14 +1,14 @@
 package cn.sunyblog.javaemaildemo.config;
 
 import cn.sunyblog.javaemaildemo.api.EmailSenderService;
-import cn.sunyblog.javaemaildemo.config.ThreadPoolConfig;
-import cn.sunyblog.javaemaildemo.event.EmailSendEventListener;
-import cn.sunyblog.javaemaildemo.mail.EmailSenderServiceImpl;
-import cn.sunyblog.javaemaildemo.mail.EmailTemplateManager;
-import cn.sunyblog.javaemaildemo.mail.RetryConfig;
-import cn.sunyblog.javaemaildemo.mail.SmtpConfig;
-import cn.sunyblog.javaemaildemo.monitor.EmailSendMonitor;
-import cn.sunyblog.javaemaildemo.strategy.*;
+import cn.sunyblog.javaemaildemo.send.event.EmailSendEventListener;
+import cn.sunyblog.javaemaildemo.send.EmailSenderServiceImpl;
+import cn.sunyblog.javaemaildemo.send.template.EmailTemplateManager;
+import cn.sunyblog.javaemaildemo.send.monitor.EmailSendMonitor;
+import cn.sunyblog.javaemaildemo.send.strategy.BatchEmailSendStrategy;
+import cn.sunyblog.javaemaildemo.send.strategy.DefaultEmailSendStrategy;
+import cn.sunyblog.javaemaildemo.send.strategy.EmailSendStrategyManager;
+import cn.sunyblog.javaemaildemo.send.strategy.HighPriorityEmailSendStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

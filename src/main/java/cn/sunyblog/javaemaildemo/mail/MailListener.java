@@ -1,4 +1,6 @@
 package cn.sunyblog.javaemaildemo.mail;
+
+import cn.sunyblog.javaemaildemo.config.MailConfig;
 import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.IMAPStore;
 import lombok.Data;
@@ -14,6 +16,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * @author suny
  * @version 1.0
@@ -36,12 +39,12 @@ public class MailListener {
     @Resource
     private MailServerConnector mailServerConnector;
 
-    private Session session;
-    private Store store;
-    private Folder folder;
-    private Thread monitorThread;
-    private Thread keepAliveThread;
-    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+    private Session session; // 邮箱会话
+    private Store store; // 邮箱存储
+    private Folder folder; // 邮箱文件夹
+    private Thread monitorThread; // 监听线程
+    private Thread keepAliveThread; // 保活线程
+    private final AtomicBoolean isRunning = new AtomicBoolean(false); // 监听状态
 
     /**
      * 启动邮件监听
@@ -61,14 +64,14 @@ public class MailListener {
                 folder = serverConnector.openInbox(store);
 
                 // 处理现有未读邮件
-                log.info("开始处理现有未读邮件");
+                log.debug("开始处理现有未读邮件");
                 processUnreadEmails();
 
                 // 设置新邮件监听器
                 setupMessageListener();
 
                 // 开始监听
-                log.info("开始监听新邮件");
+                log.debug("开始监听新邮件");
                 isRunning.set(true);
 
                 // 启动监听线程
@@ -124,14 +127,14 @@ public class MailListener {
                     folder = serverConnector.openInbox(store);
 
                     // 处理现有未读邮件
-                    log.info("开始处理现有未读邮件");
+                    log.debug("开始处理现有未读邮件");
                     processUnreadEmails();
 
                     // 设置新邮件监听器
                     setupMessageListener();
 
                     // 开始监听
-                    log.info("开始监听新邮件");
+                    log.debug("开始监听新邮件");
                     isRunning.set(true);
 
                     // 启动监听线程
@@ -180,18 +183,16 @@ public class MailListener {
                 try {
                     Message[] messages = e.getMessages();
                     long eventStartTime = System.currentTimeMillis();
-                    log.info("收到{}封新邮件", messages.length);
+                    log.debug("收到{}封新邮件", messages.length);
 
                     // 使用线程池处理邮件，不阻塞JavaMail事件线程
                     for (Message message : messages) {
                         final Message finalMessage = message;
-                        noticeThreadPool.execute(() -> {
-                            mailProcessor.processMessage(finalMessage);
-                        });
+                        noticeThreadPool.execute(() -> mailProcessor.processMessage(finalMessage));
                     }
 
                     long eventEndTime = System.currentTimeMillis();
-                    log.info("邮件事件分发完成，总耗时: {}毫秒", eventEndTime - eventStartTime);
+                    log.debug("邮件事件分发完成，总耗时: {}毫秒", eventEndTime - eventStartTime);
                 } finally {
                     processingEvent.set(false); // 重置标志位
                 }
@@ -298,7 +299,6 @@ public class MailListener {
                             }
                         } catch (Exception e) {
                             log.warn("检查IDLE能力时出错: {}", e.getMessage());
-                            supportsIdle = false;
                         }
 
                         if (supportsIdle) {
@@ -464,7 +464,7 @@ public class MailListener {
             Message[] messages = folder.search(ft);
 
             if (messages.length > 0) {
-                log.info("轮询检测到{}封未读邮件", messages.length);
+                log.debug("轮询检测到{}封未读邮件", messages.length);
 
                 for (Message message : messages) {
                     String messageId = mailCache.getMessageId(message);
@@ -473,9 +473,7 @@ public class MailListener {
                         continue;
                     }
 
-                    noticeThreadPool.execute(() -> {
-                        mailProcessor.processMessage(message);
-                    });
+                    noticeThreadPool.execute(() -> mailProcessor.processMessage(message));
                 }
             } else {
                 log.debug("轮询检查：没有新邮件");

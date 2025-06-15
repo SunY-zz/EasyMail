@@ -102,7 +102,7 @@ public class EmailHandlerRegistry implements BeanPostProcessor {
             // 重新排序
             refreshSortedHandlers();
             
-            log.info("注册邮件处理器: {} [组: {}, 优先级: {}, 异步: {}]", 
+            log.debug("注册邮件处理器: {} [组: {}, 优先级: {}, 异步: {}]", 
                     handlerInfo.getName(), group, annotation.priority(), annotation.async());
             
         } catch (Exception e) {
@@ -216,7 +216,7 @@ public class EmailHandlerRegistry implements BeanPostProcessor {
                 .filter(handler -> handler.getName().equals(handlerName))
                 .forEach(handler -> {
                     handler.setEnabled(enabled);
-                    log.info("处理器 {} 已{}", handlerName, enabled ? "启用" : "禁用");
+                    log.debug("处理器 {} 已{}", handlerName, enabled ? "启用" : "禁用");
                 });
         refreshSortedHandlers();
     }

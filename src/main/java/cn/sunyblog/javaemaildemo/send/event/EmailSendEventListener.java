@@ -1,7 +1,7 @@
-package cn.sunyblog.javaemaildemo.event;
+package cn.sunyblog.javaemaildemo.send.event;
 
-import cn.sunyblog.javaemaildemo.mail.SendResult;
-import cn.sunyblog.javaemaildemo.monitor.EmailSendMonitor;
+import cn.sunyblog.javaemaildemo.send.SendResult;
+import cn.sunyblog.javaemaildemo.send.monitor.EmailSendMonitor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;

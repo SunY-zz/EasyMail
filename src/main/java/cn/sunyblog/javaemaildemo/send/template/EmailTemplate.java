@@ -1,4 +1,4 @@
-package cn.sunyblog.javaemaildemo.mail;
+package cn.sunyblog.javaemaildemo.send.template;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

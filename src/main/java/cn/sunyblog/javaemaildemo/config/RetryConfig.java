@@ -1,4 +1,4 @@
-package cn.sunyblog.javaemaildemo.mail;
+package cn.sunyblog.javaemaildemo.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

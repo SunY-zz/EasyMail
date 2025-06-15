@@ -1,6 +1,6 @@
-package cn.sunyblog.javaemaildemo.strategy;
+package cn.sunyblog.javaemaildemo.send.strategy;
 
-import cn.sunyblog.javaemaildemo.mail.SendResult;
+import cn.sunyblog.javaemaildemo.send.SendResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -10,6 +10,7 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import java.io.File;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -39,7 +40,7 @@ public class HighPriorityEmailSendStrategy implements EmailSendStrategy {
                           String subject, String content, boolean isHtml, List<File> attachments) {
         
         long startTime = System.currentTimeMillis();
-        long duration = 0;
+        long duration;
         
         try {
             log.info("使用高优先级策略发送邮件: {}", subject);
@@ -113,7 +114,7 @@ public class HighPriorityEmailSendStrategy implements EmailSendStrategy {
     private SendResult sendWithHighPriority(List<String> toList, List<String> ccList, List<String> bccList,
                                            String subject, String content, boolean isHtml, List<File> attachments) {
         long startTime = System.currentTimeMillis();
-        long duration = 0;
+        long duration;
         
         try {
             // 创建邮件会话，使用更短的超时时间
@@ -145,7 +146,7 @@ public class HighPriorityEmailSendStrategy implements EmailSendStrategy {
                             return null;
                         }
                     })
-                    .filter(addr -> addr != null)
+                    .filter(Objects::nonNull)
                     .toArray(InternetAddress[]::new);
                 message.setRecipients(Message.RecipientType.TO, toAddresses);
             }
@@ -161,7 +162,7 @@ public class HighPriorityEmailSendStrategy implements EmailSendStrategy {
                             return null;
                         }
                     })
-                    .filter(addr -> addr != null)
+                    .filter(Objects::nonNull)
                     .toArray(InternetAddress[]::new);
                 message.setRecipients(Message.RecipientType.CC, ccAddresses);
             }
@@ -177,7 +178,7 @@ public class HighPriorityEmailSendStrategy implements EmailSendStrategy {
                             return null;
                         }
                     })
-                    .filter(addr -> addr != null)
+                    .filter(Objects::nonNull)
                     .toArray(InternetAddress[]::new);
                 message.setRecipients(Message.RecipientType.BCC, bccAddresses);
             }

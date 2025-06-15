@@ -1,8 +1,8 @@
-package cn.sunyblog.javaemaildemo.strategy;
+package cn.sunyblog.javaemaildemo.send.strategy;
 
-import cn.sunyblog.javaemaildemo.mail.MailSender;
-import cn.sunyblog.javaemaildemo.mail.SendResult;
-import cn.sunyblog.javaemaildemo.mail.SmtpConfig;
+import cn.sunyblog.javaemaildemo.send.MailSender;
+import cn.sunyblog.javaemaildemo.send.SendResult;
+import cn.sunyblog.javaemaildemo.config.SmtpConfig;
 import cn.sunyblog.javaemaildemo.util.RetryUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

@@ -7,8 +7,8 @@ cn.sunyblog.javaemaildemo.processor.config.AnnotationDrivenEmailProcessorAutoCon
 
 # Spring Boot Configuration Properties
 org.springframework.boot.context.properties.EnableConfigurationProperties=\
-  cn.sunyblog.javaemaildemo.api.EmailListenerProperties,\
-  cn.sunyblog.javaemaildemo.mail.MailConfig,\
+  cn.sunyblog.javaemaildemo.config.EmailListenerProperties,\
+  cn.sunyblog.javaemaildemo.config.MailConfig,\
   cn.sunyblog.javaemaildemo.config.EmailSenderProperties,\
   cn.sunyblog.javaemaildemo.config.SmtpConfig,\
   cn.sunyblog.javaemaildemo.config.RetryConfig,\

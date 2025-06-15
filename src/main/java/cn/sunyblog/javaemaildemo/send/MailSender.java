@@ -1,5 +1,6 @@
-package cn.sunyblog.javaemaildemo.mail;
+package cn.sunyblog.javaemaildemo.send;
 
+import cn.sunyblog.javaemaildemo.config.SmtpConfig;
 import cn.sunyblog.javaemaildemo.util.RetryUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -201,9 +202,7 @@ public class MailSender {
      * @param content 邮件内容
      */
     public void sendSimpleEmailAsync(String to, String subject, String content) {
-        executor.execute(() -> {
-            sendEmail(to, null, null, subject, content, false, null);
-        });
+        executor.execute(() -> sendEmail(to, null, null, subject, content, false, null));
         log.info("异步发送邮件任务已提交，收件人: {}, 主题: {}", to, subject);
     }
     
@@ -215,9 +214,7 @@ public class MailSender {
      * @param htmlContent HTML格式的邮件内容
      */
     public void sendHtmlEmailAsync(String to, String subject, String htmlContent) {
-        executor.execute(() -> {
-            sendEmail(to, null, null, subject, htmlContent, true, null);
-        });
+        executor.execute(() -> sendEmail(to, null, null, subject, htmlContent, true, null));
         log.info("异步发送HTML邮件任务已提交，收件人: {}, 主题: {}", to, subject);
     }
     
@@ -333,11 +330,8 @@ public class MailSender {
         // 如果重试功能未启用，直接调用原始发送方法
         if (!smtpConfig.getRetry().isEnabled()) {
             try {
-                boolean sendEmailInternal = sendEmailInternal(to, cc, bcc, subject, content, isHtml, attachments);
-                return sendEmailInternal;
-            } catch (MessagingException e) {
-                throw new RuntimeException(e);
-            } catch (UnsupportedEncodingException e) {
+                return sendEmailInternal(to, cc, bcc, subject, content, isHtml, attachments);
+            } catch (MessagingException | UnsupportedEncodingException e) {
                 throw new RuntimeException(e);
             }
         }

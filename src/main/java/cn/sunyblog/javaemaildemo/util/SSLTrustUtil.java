@@ -1,4 +1,4 @@
-package cn.sunyblog.javaemaildemo.mail;
+package cn.sunyblog.javaemaildemo.util;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -12,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.cert.X509Certificate;
+
 /**
  *  * @author suny
  *  * @version 1.0
@@ -76,9 +77,9 @@ public class SSLTrustUtil {
             System.setProperty("com.sun.net.ssl.checkRevocation", "false");
             Security.setProperty("ocsp.enable", "false");
 
-            // 设置JavaMail使用我们的自定义SSLSocketFactory
-            System.setProperty("mail.imap.ssl.socketFactory.class", "com.zdsoft.rpa.email.SSLTrustUtil$TrustAllSSLSocketFactory");
-            System.setProperty("mail.smtp.ssl.socketFactory.class", "com.zdsoft.rpa.email.SSLTrustUtil$TrustAllSSLSocketFactory");
+            // 设置JavaMail使用自定义SSLSocketFactory
+            System.setProperty("mail.imap.ssl.socketFactory.class", "cn.sunyblog.javaemaildemo.util.SSLTrustUtil$TrustAllSSLSocketFactory");
+            System.setProperty("mail.smtp.ssl.socketFactory.class", "cn.sunyblog.javaemaildemo.util.SSLTrustUtil$TrustAllSSLSocketFactory");
 
             // 设置全局SSL上下文
             SSLContext.setDefault(sslContext);

@@ -1,13 +1,15 @@
 package cn.sunyblog.javaemaildemo;
 
 import cn.sunyblog.javaemaildemo.api.EmailSenderService;
+import cn.sunyblog.javaemaildemo.api.EasyMailSender;
+import cn.sunyblog.javaemaildemo.api.EmailRequest;
 import cn.sunyblog.javaemaildemo.config.EmailSenderAutoConfiguration;
 import cn.sunyblog.javaemaildemo.config.EmailSenderProperties;
-import cn.sunyblog.javaemaildemo.mail.EmailTemplate;
-import cn.sunyblog.javaemaildemo.mail.EmailTemplateManager;
+import cn.sunyblog.javaemaildemo.send.template.EmailTemplate;
+import cn.sunyblog.javaemaildemo.send.template.EmailTemplateManager;
+import cn.sunyblog.javaemaildemo.send.SendResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Component;
 
@@ -23,12 +25,13 @@ import java.util.function.Consumer;
 
 /**
  * 邮件发送服务启动器
- * 提供便捷的邮件发送功能，支持开箱即用
- * 
+ * 实现EasyMailSender接口，提供统一的对外API
+ * 这是推荐给外部用户使用的主要实现类
+ * <p>
  * 使用方式：
  * 1. 引入依赖或复制代码到项目中
  * 2. 配置SMTP相关参数
- * 3. 注入EmailSenderStarter或EmailSenderService使用
+ * 3. 注入EasyMailSender使用（推荐）或EmailSenderStarter
  * 
  * @author sunyblog
  * @since 1.0.0
@@ -37,7 +40,7 @@ import java.util.function.Consumer;
 @Component
 @AutoConfigurationPackage
 @Import(EmailSenderAutoConfiguration.class)
-public class EmailSenderStarter {
+public class EmailSenderStarter implements EasyMailSender {
 
     @Resource
     private EmailSenderService emailSenderService;
@@ -59,95 +62,163 @@ public class EmailSenderStarter {
         }
     }
 
+    // ==================== EasyMailSender接口实现 ====================
+    
+    @Override
+    public SendResult send(EmailRequest request) {
+        return emailSenderService.send(request);
+    }
+    
+    @Override
+    public CompletableFuture<SendResult> sendAsync(EmailRequest request) {
+        return emailSenderService.sendAsync(request);
+    }
+
     // ==================== 便捷发送方法 ====================
 
     /**
      * 发送简单文本邮件
+     * @param to 收件人邮箱
+     * @param subject 邮件主题
+     * @param content 邮件内容
+     * @return 发送结果
      */
-    public boolean sendText(String to, String subject, String content) {
-        return emailSenderService.sendText(to, subject, content).isSuccess();
+    @Override
+    public SendResult sendText(String to, String subject, String content) {
+        return emailSenderService.sendText(to, subject, content);
     }
 
     /**
      * 发送HTML邮件
+     * @param to 收件人邮箱
+     * @param subject 邮件主题
+     * @param htmlContent HTML格式的邮件内容
+     * @return 发送结果
      */
-    public boolean sendHtml(String to, String subject, String htmlContent) {
-        return emailSenderService.sendHtml(to, subject, htmlContent).isSuccess();
+    @Override
+    public SendResult sendHtml(String to, String subject, String htmlContent) {
+        return emailSenderService.sendHtml(to, subject, htmlContent);
     }
 
     /**
      * 发送带附件的邮件
+     * @param to 收件人邮箱
+     * @param subject 邮件主题
+     * @param content 邮件内容
+     * @param attachments 附件列表
+     * @return 发送结果
      */
-    public boolean sendWithAttachment(String to, String subject, String content, File... attachments) {
-        return emailSenderService.sendWithAttachments(to, subject, content, false, Arrays.asList(attachments)).isSuccess();
+    @Override
+    public SendResult sendWithAttachment(String to, String subject, String content, File... attachments) {
+        return emailSenderService.sendWithAttachments(to, subject, content, false, Arrays.asList(attachments));
     }
 
     /**
      * 批量发送邮件
+     * @param toList 收件人列表
+     * @param subject 邮件主题
+     * @param content 邮件内容
+     * @return 发送结果
      */
-    public boolean sendBatch(List<String> toList, String subject, String content) {
-        return emailSenderService.sendToMultiple(toList, subject, content, false).isSuccess();
+    @Override
+    public SendResult sendBatch(List<String> toList, String subject, String content) {
+        return emailSenderService.sendToMultiple(toList, subject, content, false);
     }
 
     /**
-     * 异步发送邮件
+     * 异步发送文本邮件
+     * @param to 收件人邮箱
+     * @param subject 邮件主题
+     * @param content 邮件内容
+     * @return 异步发送结果
      */
-    public CompletableFuture<Boolean> sendAsync(String to, String subject, String content) {
-        return emailSenderService.sendTextAsync(to, subject, content)
-                .thenApply(result -> result.isSuccess());
+    @Override
+    public CompletableFuture<SendResult> sendTextAsync(String to, String subject, String content) {
+        return emailSenderService.sendTextAsync(to, subject, content);
+    }
+    
+    /**
+     * 异步发送HTML邮件
+     * @param to 收件人邮箱
+     * @param subject 邮件主题
+     * @param htmlContent HTML格式的邮件内容
+     * @return 异步发送结果
+     */
+    @Override
+    public CompletableFuture<SendResult> sendHtmlAsync(String to, String subject, String htmlContent) {
+        return emailSenderService.sendHtmlAsync(to, subject, htmlContent);
     }
 
     /**
      * 使用模板发送邮件
+     * @param to 收件人邮箱
+     * @param templateName 模板名称
+     * @param variables 模板变量
+     * @return 发送结果
      */
-    public boolean sendWithTemplate(String to, String templateName, Map<String, Object> variables) {
+    @Override
+    public SendResult sendWithTemplate(String to, String templateName, Map<String, Object> variables) {
         EmailTemplate template = templateManager.getTemplate(templateName);
         if (template == null) {
             log.warn("模板不存在: {}", templateName);
-            return false;
+            return SendResult.failure(Arrays.asList(to), "模板邮件", "模板不存在: " + templateName, 0);
         }
-        return emailSenderService.sendWithTemplate(to, template, variables).isSuccess();
+        return emailSenderService.sendWithTemplate(to, template, variables);
     }
 
     // ==================== 高级功能 ====================
 
     /**
      * 发送邮件并处理结果
+     * @param to 收件人邮箱
+     * @param subject 邮件主题
+     * @param content 邮件内容
+     * @param successCallback 成功回调
+     * @param errorCallback 错误回调
+     * @return 异步发送结果
      */
-    public void sendWithCallback(String to, String subject, String content, 
-                                Consumer<Boolean> successCallback, 
-                                Consumer<String> errorCallback) {
-        emailSenderService.sendTextAsync(to, subject, content)
-                .thenAccept(result -> {
+    @Override
+    public CompletableFuture<SendResult> sendWithCallback(String to, String subject, String content, 
+                                Consumer<SendResult> successCallback, 
+                                Consumer<SendResult> errorCallback) {
+        return emailSenderService.sendTextAsync(to, subject, content)
+                .thenApply(result -> {
                     if (result.isSuccess()) {
                         if (successCallback != null) {
-                            successCallback.accept(true);
+                            successCallback.accept(result);
                         }
                     } else {
                         if (errorCallback != null) {
-                            errorCallback.accept(result.getErrorMessage());
+                            errorCallback.accept(result);
                         }
                     }
+                    return result;
                 });
     }
 
     /**
      * 检查邮件服务连接状态
+     * @return 连接状态
      */
+    @Override
     public boolean checkConnection() {
         return emailSenderService.checkConnection();
     }
 
     /**
      * 获取发送统计信息
+     * @return 发送统计信息
      */
-    public String getStats() {
+    @Override
+    public String getSendingStats() {
         return emailSenderService.getSendingStats();
     }
 
     /**
      * 获取线程池状态
+     * @return 线程池状态信息
      */
+    @Override
     public String getThreadPoolStatus() {
         return emailSenderService.getThreadPoolStatus();
     }
