@@ -25,37 +25,37 @@
     </appender>
 
     <!-- 项目包日志级别 -->
-    <logger name="cn.sunyblog.javaemaildemo" level="INFO" additivity="false">
+    <logger name="easymail" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </logger>
 
     <!-- 邮件监听核心组件保持INFO级别，显示关键状态 -->
-    <logger name="cn.sunyblog.javaemaildemo.mail.MailListener" level="INFO" additivity="false">
+    <logger name="easymail.mail.MailListener" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </logger>
 
     <!-- 邮件处理器保持INFO级别，显示处理结果 -->
-    <logger name="cn.sunyblog.javaemaildemo.mail.MailProcessor" level="INFO" additivity="false">
+    <logger name="easymail.mail.MailProcessor" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </logger>
 
     <!-- 连接器详细日志降级为DEBUG -->
-    <logger name="cn.sunyblog.javaemaildemo.mail.MailServerConnector" level="WARN" additivity="false">
+    <logger name="easymail.mail.MailServerConnector" level="WARN" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </logger>
 
     <!-- 处理器注册和执行详细日志降级为DEBUG -->
-    <logger name="cn.sunyblog.javaemaildemo.processor.handler" level="WARN" additivity="false">
+    <logger name="easymail.processor.handler" level="WARN" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </logger>
 
     <!-- 注解驱动处理器管理器保持INFO级别 -->
-    <logger name="cn.sunyblog.javaemaildemo.processor.config.AnnotationDrivenEmailProcessorManager" level="INFO" additivity="false">
+    <logger name="easymail.processor.config.AnnotationDrivenEmailProcessorManager" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </logger>
@@ -76,12 +76,12 @@
 
     <!-- 开发环境配置 -->
     <springProfile name="dev">
-        <logger name="cn.sunyblog.javaemaildemo" level="DEBUG"/>
+        <logger name="easymail" level="DEBUG"/>
     </springProfile>
 
     <!-- 生产环境配置 -->
     <springProfile name="prod">
-        <logger name="cn.sunyblog.javaemaildemo" level="INFO"/>
+        <logger name="easymail" level="INFO"/>
         <root level="ERROR">
             <appender-ref ref="FILE"/>
         </root>
