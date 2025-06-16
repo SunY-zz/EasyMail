@@ -74,9 +74,9 @@ annotation-driven-email-processor:
 # 日志配置
 logging:
   level:
-    cn.sunyblog.easymail.processor: INFO
-    cn.sunyblog.easymail.mail: INFO
-    cn.sunyblog.easymail: INFO
+    cn.sunyblog.javaemaildemo.processor: INFO
+    cn.sunyblog.javaemaildemo.mail: INFO
+    cn.sunyblog.javaemaildemo: INFO
     root: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p %pid --- [%15.15t] %-40.40logger{39} : %m%n"
