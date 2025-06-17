@@ -1,0 +1,139 @@
+package cn.sunyblog.easymail.config;
+
+import cn.sunyblog.easymail.api.EasyMailSenderService;
+import cn.sunyblog.easymail.send.event.EasyMailSendEventListener;
+import cn.sunyblog.easymail.send.EasyMailSenderServiceImpl;
+import cn.sunyblog.easymail.send.template.EasyMailSendTemplateManager;
+import cn.sunyblog.easymail.send.monitor.EasyMailSendMonitor;
+import cn.sunyblog.easymail.send.strategy.BatchEasyMailSendStrategy;
+import cn.sunyblog.easymail.send.strategy.DefaultEasyMailSendStrategy;
+import cn.sunyblog.easymail.send.strategy.EasyMailSendStrategyManager;
+import cn.sunyblog.easymail.send.strategy.HighPriorityEasyMailSendStrategy;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
+/**
+ * 邮件发送服务自动配置类
+ * 自动配置所有邮件发送相关的组件
+ *
+ * @author sunyblog
+ * @since 1.0.0
+ */
+@Slf4j
+@Configuration
+@EnableConfigurationProperties({EasyMailSmtpConfig.class, EasyMailRetryConfig.class})
+@ConditionalOnProperty(prefix = "email.sender", name = "enabled", havingValue = "true", matchIfMissing = true)
+@Import({EasyMailThreadPoolConfig.class})
+public class EasyMailSenderAutoConfiguration {
+
+    @Resource
+    private EasyMailSmtpConfig easyMailSmtpConfig;
+
+    @Resource
+    private EasyMailRetryConfig easyMailRetryConfig;
+
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
+
+    @PostConstruct
+    public void init() {
+        log.info("EmailSender 自动配置已启用");
+        log.info("SMTP配置: host={}, port={}, username={}",
+                easyMailSmtpConfig.getServer(), easyMailSmtpConfig.getPort(), easyMailSmtpConfig.getUsername());
+        log.info("重试配置: maxRetries={}, retryDelay={}",
+                easyMailRetryConfig.getMaxRetries(), easyMailRetryConfig.getInitialDelayMs());
+    }
+
+    /**
+     * 邮件模板管理器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public EasyMailSendTemplateManager emailTemplateManager() {
+        EasyMailSendTemplateManager manager = new EasyMailSendTemplateManager();
+        log.info("EmailTemplateManager 已创建");
+        return manager;
+    }
+
+    /**
+     * 邮件发送监控器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public EasyMailSendMonitor emailSendMonitor() {
+        EasyMailSendMonitor monitor = new EasyMailSendMonitor();
+        log.info("EmailSendMonitor 已创建");
+        return monitor;
+    }
+
+    /**
+     * 邮件发送事件监听器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public EasyMailSendEventListener emailSendEventListener() {
+        return new EasyMailSendEventListener();
+    }
+
+    /**
+     * 默认邮件发送策略
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "defaultEmailSendStrategy")
+    public DefaultEasyMailSendStrategy defaultEmailSendStrategy() {
+        DefaultEasyMailSendStrategy strategy = new DefaultEasyMailSendStrategy();
+        log.info("DefaultEmailSendStrategy 已创建");
+        return strategy;
+    }
+
+    /**
+     * 批量邮件发送策略
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "batchEmailSendStrategy")
+    public BatchEasyMailSendStrategy batchEmailSendStrategy() {
+        BatchEasyMailSendStrategy strategy = new BatchEasyMailSendStrategy();
+        log.info("BatchEmailSendStrategy 已创建");
+        return strategy;
+    }
+
+    /**
+     * 高优先级邮件发送策略
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "highPriorityEmailSendStrategy")
+    public HighPriorityEasyMailSendStrategy highPriorityEmailSendStrategy() {
+        HighPriorityEasyMailSendStrategy strategy = new HighPriorityEasyMailSendStrategy();
+        log.info("HighPriorityEmailSendStrategy 已创建");
+        return strategy;
+    }
+
+    /**
+     * 邮件发送策略管理器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public EasyMailSendStrategyManager emailSendStrategyManager() {
+        return new EasyMailSendStrategyManager();
+    }
+
+    /**
+     * 邮件发送服务实现
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public EasyMailSenderService emailSenderService() {
+        EasyMailSenderServiceImpl service = new EasyMailSenderServiceImpl();
+        log.info("EmailSenderService 已创建");
+        return service;
+    }
+}

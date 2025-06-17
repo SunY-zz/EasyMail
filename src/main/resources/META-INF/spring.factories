@@ -1,15 +1,15 @@
 # Auto Configuration
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-cn.sunyblog.easymail.config.MailConfigCompatibilityAutoConfiguration,\
-cn.sunyblog.easymail.config.EmailListenerAutoConfiguration,\
-cn.sunyblog.easymail.config.EmailSenderAutoConfiguration,\
-cn.sunyblog.easymail.processor.config.AnnotationDrivenEmailProcessorAutoConfiguration
+cn.sunyblog.easymail.config.EasyMailConfigCompatibilityAutoConfiguration,\
+cn.sunyblog.easymail.config.EasyMailListenerAutoConfiguration,\
+cn.sunyblog.easymail.config.EasyMailSenderAutoConfiguration,\
+cn.sunyblog.easymail.processor.config.AnnotationDrivenEasyMailProcessorAutoConfiguration
 
 # Spring Boot Configuration Properties
 org.springframework.boot.context.properties.EnableConfigurationProperties=\
-  cn.sunyblog.easymail.config.EmailListenerProperties,\
-  cn.sunyblog.easymail.config.MailConfig,\
-  cn.sunyblog.easymail.config.EmailSenderProperties,\
-  cn.sunyblog.easymail.config.SmtpConfig,\
-  cn.sunyblog.easymail.config.RetryConfig,\
-  cn.sunyblog.easymail.processor.config.AnnotationDrivenEmailProcessorProperties
+  cn.sunyblog.easymail.config.EasyMailListenerProperties,\
+  cn.sunyblog.easymail.config.EasyMailConfig,\
+  cn.sunyblog.easymail.config.EasyMailSenderProperties,\
+  cn.sunyblog.easymail.config.EasyMailSmtpConfig,\
+  cn.sunyblog.easymail.config.EasyMailRetryConfig,\
+  cn.sunyblog.easymail.processor.config.AnnotationDrivenEasyMailProcessorProperties

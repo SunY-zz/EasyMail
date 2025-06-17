@@ -7,7 +7,7 @@
 ### 基础异常类
 
 #### EmailException
-- **包路径**: `cn.sunyblog.easymail.exception.EmailException`
+- **包路径**: `cn.sunyblog.easymail.exception.EasyMailException`
 - **作用**: 所有邮件相关异常的基类
 - **特性**:
   - 继承自 `RuntimeException`
@@ -130,7 +130,7 @@ EmailProcessException.handlerNotFound(String handlerName, String messageId)
 ## 异常处理工具类
 
 ### EmailExceptionHandler
-- **包路径**: `cn.sunyblog.easymail.exception.EmailExceptionHandler`
+- **包路径**: `cn.sunyblog.easymail.exception.EasyMailExceptionHandler`
 - **作用**: 提供异常包装、邮箱验证和日志记录功能
 
 **主要方法**:

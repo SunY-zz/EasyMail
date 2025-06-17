@@ -1,9 +1,9 @@
 package cn.sunyblog.easymail.mail;
 
-import cn.sunyblog.easymail.api.EmailListenerApi;
-import cn.sunyblog.easymail.config.MailConfig;
-import cn.sunyblog.easymail.processor.config.AnnotationDrivenEmailProcessorManager;
-import cn.sunyblog.easymail.processor.handler.EmailContextBuilder;
+import cn.sunyblog.easymail.api.EasyMailListenerApi;
+import cn.sunyblog.easymail.config.EasyMailConfig;
+import cn.sunyblog.easymail.processor.config.AnnotationDrivenEasyMailProcessorManager;
+import cn.sunyblog.easymail.processor.handler.EasyMailContextBuilder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,12 +15,9 @@ import javax.mail.Flags;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-import cn.sunyblog.easymail.exception.EmailExceptionHandler;
-import cn.sunyblog.easymail.exception.EmailProcessException;
+import cn.sunyblog.easymail.exception.EasyMailExceptionHandler;
+import cn.sunyblog.easymail.exception.EasyMailProcessException;
 
 /**
  * @author suny
@@ -34,22 +31,22 @@ import cn.sunyblog.easymail.exception.EmailProcessException;
 public class MailProcessor {
 
     @Resource
-    private MailConfig mailConfig;
+    private EasyMailConfig mailConfig;
     @Resource
-    private MailContentParser contentParser;
+    private EasyMailContentParser contentParser;
     @Resource
-    private MailCache mailCache;
+    private EasyMailCache easyMailCache;
     @Resource
-    private EmailListenerApi emailListenerApi;
+    private EasyMailListenerApi easyMailListenerApi;
 
     @Autowired(required = false)
-    private AnnotationDrivenEmailProcessorManager annotationProcessorManager;
+    private AnnotationDrivenEasyMailProcessorManager annotationProcessorManager;
 
     @Autowired(required = false)
-    private EmailContextBuilder emailContextBuilder;
+    private EasyMailContextBuilder easyMailContextBuilder;
 
     @Autowired(required = false)
-    private EmailProcessorFunction emailProcessorFunction;
+    private EasyMailProcessorFunction easyMailProcessorFunction;
 
     /**
      * 处理单封邮件
@@ -60,16 +57,16 @@ public class MailProcessor {
     public boolean processMessage(Message message) {
         try {
             // 获取邮件ID
-            String messageId = mailCache.getMessageId(message);
+            String messageId = easyMailCache.getMessageId(message);
 
             // 原子性检查并标记为已处理
-            if (!mailCache.checkAndMarkAsProcessed(messageId)) {
+            if (!easyMailCache.checkAndMarkAsProcessed(messageId)) {
                 log.debug("邮件已处理，跳过: {}", messageId);
                 return false;
             }
 
             long startTime = System.currentTimeMillis();
-            String subject = mailCache.getSubjectSafely(message);
+            String subject = easyMailCache.getSubjectSafely(message);
             log.debug("开始处理邮件，主题: {}", subject);
 
             // 获取发件人
@@ -92,33 +89,33 @@ public class MailProcessor {
                     processed = annotationProcessorManager.processEmail(message, mailConfig.getAttachmentDir());
                     log.info("注解驱动邮件处理完成");
                 } catch (Exception e) {
-                    EmailProcessException processEx = EmailProcessException.processingError("注解驱动处理器处理失败，回退到其他处理器", e);
+                    EasyMailProcessException processEx = EasyMailProcessException.processingError("注解驱动处理器处理失败，回退到其他处理器", e);
                     log.error(processEx.getFullErrorMessage(), processEx);
                 }
             }
 
             // 使用函数式处理方式
-            if (!processed && emailProcessorFunction != null) {
+            if (!processed && easyMailProcessorFunction != null) {
                 try {
                     // 只有在需要时才解析邮件内容
                     emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
-                    Object result = emailProcessorFunction.process(message, emailContent, subject, from);
+                    Object result = easyMailProcessorFunction.process(message, emailContent, subject, from);
                     processed = (result != null);
                     log.info("函数式邮件处理结果: {}", result);
                 } catch (Exception e) {
-                    EmailProcessException processEx = EmailProcessException.processingError("函数式邮件处理异常", e);
+                    EasyMailProcessException processEx = EasyMailProcessException.processingError("函数式邮件处理异常", e);
                     log.error(processEx.getFullErrorMessage(), processEx);
                 }
             }
             // 其次使用接口方式
-            else if (!processed && emailListenerApi != null) {
+            else if (!processed && easyMailListenerApi != null) {
                 try {
                     // 只有在需要时才解析邮件内容
                     emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
-                    processed = emailListenerApi.processEmail(message, emailContent, subject, from);
-                    log.info("邮件处理器[{}]处理结果: {}", emailListenerApi.getProcessorName(), processed);
+                    processed = easyMailListenerApi.processEmail(message, emailContent, subject, from);
+                    log.info("邮件处理器[{}]处理结果: {}", easyMailListenerApi.getProcessorName(), processed);
                 } catch (Exception e) {
-                    EmailProcessException processEx = EmailProcessException.processingError("邮件处理器[" + emailListenerApi.getProcessorName() + "]处理异常", e);
+                    EasyMailProcessException processEx = EasyMailProcessException.processingError("邮件处理器[" + easyMailListenerApi.getProcessorName() + "]处理异常", e);
                     log.error(processEx.getFullErrorMessage(), processEx);
                 }
             }
@@ -137,21 +134,21 @@ public class MailProcessor {
                 // 标记为已读
                 message.setFlag(Flags.Flag.SEEN, true);
             } catch (MessagingException ex) {
-                EmailProcessException processEx = (EmailProcessException) EmailExceptionHandler.wrapMessagingException(ex, "标记邮件为已读失败");
+                EasyMailProcessException processEx = (EasyMailProcessException) EasyMailExceptionHandler.wrapMessagingException(ex, "标记邮件为已读失败");
                 log.error(processEx.getFullErrorMessage(), processEx);
             }
 
             return processed;
         } catch (MessagingException e) {
-            EmailProcessException processEx = (EmailProcessException) EmailExceptionHandler.wrapMessagingException(e, "处理邮件异常");
+            EasyMailProcessException processEx = (EasyMailProcessException) EasyMailExceptionHandler.wrapMessagingException(e, "处理邮件异常");
             log.error(processEx.getFullErrorMessage(), processEx);
             return false;
         } catch (IOException e) {
-            EmailProcessException processEx = EmailProcessException.processingError("处理邮件IO异常", e);
+            EasyMailProcessException processEx = EasyMailProcessException.processingError("处理邮件IO异常", e);
             log.error(processEx.getFullErrorMessage(), processEx);
             return false;
         } catch (Exception e) {
-            EmailProcessException processEx = EmailProcessException.processingError("处理邮件失败", e);
+            EasyMailProcessException processEx = EasyMailProcessException.processingError("处理邮件失败", e);
             log.error(processEx.getFullErrorMessage(), processEx);
             return false;
         }
@@ -178,7 +175,7 @@ public class MailProcessor {
      * @return 处理统计信息
      */
     public String getProcessingStats() {
-        return "已处理邮件数: " + mailCache.getProcessedCount();
+        return "已处理邮件数: " + easyMailCache.getProcessedCount();
     }
 
     /**
@@ -187,8 +184,8 @@ public class MailProcessor {
      *
      * @param processorFunction 邮件处理函数
      */
-    public void setEmailProcessorFunction(EmailProcessorFunction processorFunction) {
-        this.emailProcessorFunction = processorFunction;
+    public void setEasyMailProcessorFunction(EasyMailProcessorFunction processorFunction) {
+        this.easyMailProcessorFunction = processorFunction;
         log.info("已设置函数式邮件处理器");
     }
 }
