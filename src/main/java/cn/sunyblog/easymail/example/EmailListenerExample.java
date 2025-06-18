@@ -1,8 +1,7 @@
 //package cn.sunyblog.easymail.example;
 //
-//
-//import cn.sunyblog.easymail.api.EmailListenerApi;
-//import cn.sunyblog.easymail.mail.MailService;
+//import cn.sunyblog.easymail.api.EasyMailListenerApi;
+//import cn.sunyblog.easymail.mail.EasyMailService;
 //import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.stereotype.Component;
 //
@@ -13,14 +12,14 @@
 // * 邮件监听器示例
 // * 包含一个示例处理器和一个示例控制器
 // */
-//public class EmailListenerExample {
+//public class EasyMailListenerExample {
 //
 //    /**
 //     * 示例邮件处理器
-//     * 实现EmailListenerApi接口，处理接收到的邮件
+//     * 实现EasyMailListenerApi接口，处理接收到的邮件
 //     */
 //    @Component
-//    public static class ExampleEmailProcessor implements EmailListenerApi {
+//    public static class ExampleEasyMailProcessor implements EasyMailListenerApi {
 //
 //        @Override
 //        public boolean processEmail(Message message, String content, String subject, String from) {
@@ -62,11 +61,11 @@
 //     * 提供API接口来控制邮件监听器
 //     */
 //    @RestController
-//    @RequestMapping("/api/email")
-//    public static class ExampleEmailController {
+//    @RequestMapping("/api/EasyMail")
+//    public static class ExampleEasyMailController {
 //
 //        @Autowired
-//        private MailService mailService;
+//        private EasyMailService mailService;
 //
 //        /**
 //         * 获取邮件监听器状态

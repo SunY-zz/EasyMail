@@ -49,6 +49,11 @@ public class EasyMailConfig {
      * 监听配置
      */
     private Listener listener = new Listener();
+    /**
+     * 设置自动启动
+     */
+    private boolean autoStart = false;
+
 
     /**
      * 连接配置类，用于配置邮件连接的超时参数

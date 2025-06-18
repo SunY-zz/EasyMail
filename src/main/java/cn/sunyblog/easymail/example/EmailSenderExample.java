@@ -1,10 +1,9 @@
 //package cn.sunyblog.easymail.example;
 //
-//
-//import cn.sunyblog.easymail.api.EmailRequest;
-//import cn.sunyblog.easymail.api.EmailSenderService;
-//import cn.sunyblog.easymail.mail.MailService;
-//import cn.sunyblog.easymail.send.SendResult;
+//import cn.sunyblog.easymail.api.EasyMailRequest;
+//import cn.sunyblog.easymail.api.EasyMailSenderService;
+//import cn.sunyblog.easymail.mail.EasyMailService;
+//import cn.sunyblog.easymail.send.EasyMailSendResult;
 //import lombok.extern.slf4j.Slf4j;
 //import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.boot.CommandLineRunner;
@@ -19,13 +18,13 @@
 // */
 //@Slf4j
 //@Component
-//public class EmailSenderExample implements CommandLineRunner {
+//public class EasyMailSenderExample implements CommandLineRunner {
 //
 //    @Autowired
-//    private MailService mailService;
+//    private EasyMailService mailService;
 //
 //    @Resource
-//    private EmailSenderService emailSenderService;
+//    private EasyMailSenderService easyMailSenderService;
 //
 //    @Override
 //    public void run(String... args) {
@@ -36,7 +35,7 @@
 //
 //        // 检查是否启用了示例代码
 //        if (!isExampleEnabled()) {
-//            log.info("示例代码已禁用，如需启用请设置 email.sender.example.enabled=true");
+//            log.info("示例代码已禁用，如需启用请设置 EasyMail.sender.example.enabled=true");
 //            return;
 //        }
 //
@@ -45,7 +44,7 @@
 //            demonstrateBuilderAPI();
 //
 //            // 新的企业级邮件发送服务示例
-//            //enterpriseEmailServiceExamples();
+//            //enterpriseEasyMailServiceExamples();
 //
 //            log.info("=== 邮件发送服务示例完成 ===");
 //        } catch (Exception e) {
@@ -65,34 +64,34 @@
 ////    /**
 ////     * 发送简单文本邮件示例
 ////     */
-////    public void sendSimpleTextEmail() {
+////    public void sendSimpleTextEasyMail() {
 ////        String to = "3379652824@qq.com";
 ////        String subject = "测试邮件 - 文本格式";
-////        String content = "这是一封测试邮件，由JavaEmailDemo发送。\n\n祝好，\nJavaEmailDemo团队";
+////        String content = "这是一封测试邮件，由JavaEasyMailDemo发送。\n\n祝好，\nJavaEasyMailDemo团队";
 ////
-////        boolean success = mailService.sendSimpleEmail(to, subject, content);
+////        boolean success = mailService.sendSimpleEasyMail(to, subject, content);
 ////        log.info("简单文本邮件发送{}", success ? "成功" : "失败");
 ////    }
 ////
 ////    /**
 ////     * 发送HTML格式邮件示例
 ////     */
-////    public void sendHtmlEmail() {
+////    public void sendHtmlEasyMail() {
 ////        String to = "recipient@example.com";
 ////        String subject = "测试邮件 - HTML格式";
 ////        String htmlContent = ""
 ////                + "<html>"
 ////                + "<head><title>测试邮件</title></head>"
 ////                + "<body>"
-////                + "<h1>JavaEmailDemo测试邮件</h1>"
+////                + "<h1>JavaEasyMailDemo测试邮件</h1>"
 ////                + "<p>这是一封<strong>HTML格式</strong>的测试邮件。</p>"
-////                + "<p>您可以在这里添加<span style='color:blue;'>各种样式</span>和<a href='https://github.com/yourusername/JavaEmailDemo'>链接</a>。</p>"
+////                + "<p>您可以在这里添加<span style='color:blue;'>各种样式</span>和<a href='https://github.com/yourusername/JavaEasyMailDemo'>链接</a>。</p>"
 ////                + "<hr/>"
-////                + "<p>祝好，<br/>JavaEmailDemo团队</p>"
+////                + "<p>祝好，<br/>JavaEasyMailDemo团队</p>"
 ////                + "</body>"
 ////                + "</html>";
 ////
-////        boolean success = mailService.sendHtmlEmail(to, subject, htmlContent);
+////        boolean success = mailService.sendHtmlEasyMail(to, subject, htmlContent);
 ////        log.info("HTML格式邮件发送{}", success ? "成功" : "失败");
 ////    }
 ////
@@ -100,9 +99,9 @@
 //    /**
 //     * 发送带附件的邮件示例 - 使用新的Builder API
 //     */
-//    public void sendEmailWithAttachments() {
+//    public void sendEasyMailWithAttachments() {
 //        // 使用新的Builder API发送带附件的邮件
-//        EmailRequest request = EmailRequest.builder()
+//        EasyMailRequest request = EasyMailRequest.builder()
 //                .to("recipient@example.com")
 //                .subject("EasyMail 测试邮件 - 带附件")
 //                .text("这是一封带附件的测试邮件，使用了新的Builder API，请查看附件。")
@@ -111,7 +110,7 @@
 //                // .attachment(new File("path/to/attachment2.jpg"))
 //                .build();
 //
-//        SendResult success = emailSenderService.send(request);
+//        EasyMailSendResult success = easyMailSenderService.send(request);
 //        //log.info("带附件的邮件发送{}", success ? "成功" : "失败");
 //    }
 //
@@ -123,17 +122,17 @@
 //
 //        try {
 //            // 1. 简单文本邮件
-//            EmailRequest textRequest = EmailRequest.builder()
+//            EasyMailRequest textRequest = EasyMailRequest.builder()
 //                    .to("recipient@example.com")
 //                    .subject("EasyMail 简单文本邮件测试")
 //                    .text("这是一封简单的文本邮件，用于测试EasyMail的基本发送功能。\n\n发送时间：" + new Date())
 //                    .build();
 //
-//            SendResult textResult = emailSenderService.send(textRequest);
+//            EasyMailSendResult textResult = easyMailSenderService.send(textRequest);
 //            //log.info("文本邮件发送{}", textResult ? "成功" : "失败");
 //
 //            // 2. HTML邮件
-//            EmailRequest htmlRequest = EmailRequest.builder()
+//            EasyMailRequest htmlRequest = EasyMailRequest.builder()
 //                    .to("recipient@example.com")
 //                    .subject("EasyMail HTML邮件测试")
 //                    .html("<html><body>" +
@@ -144,11 +143,11 @@
 //                            "</body></html>")
 //                    .build();
 //
-//            SendResult htmlResult = emailSenderService.send(htmlRequest);
+//            EasyMailSendResult htmlResult = easyMailSenderService.send(htmlRequest);
 //            // log.info("HTML邮件发送{}", htmlResult ? "成功" : "失败");
 //
 //            // 3. 多收件人邮件
-//            EmailRequest multiRecipientRequest = EmailRequest.builder()
+//            EasyMailRequest multiRecipientRequest = EasyMailRequest.builder()
 //                    .to("recipient1@example.com")
 //                    .to("recipient2@example.com")
 //                    .cc("cc@example.com")
@@ -157,17 +156,17 @@
 //                    .html("<h3>多收件人邮件测试</h3><p>这封邮件发送给了多个收件人。</p>")
 //                    .build();
 //
-//            SendResult multiResult = emailSenderService.send(multiRecipientRequest);
+//            EasyMailSendResult multiResult = easyMailSenderService.send(multiRecipientRequest);
 //            //log.info("多收件人邮件发送{}", multiResult ? "成功" : "失败");
 //
 //            // 4. 异步发送
-//            EmailRequest asyncRequest = EmailRequest.builder()
+//            EasyMailRequest asyncRequest = EasyMailRequest.builder()
 //                    .to("recipient@example.com")
 //                    .subject("EasyMail 异步邮件测试")
 //                    .text("这是一封异步发送的邮件。")
 //                    .build();
 //
-//            emailSenderService.sendAsync(asyncRequest)
+//            easyMailSenderService.sendAsync(asyncRequest)
 //                    .thenAccept(result -> log.info("异步邮件发送{}", result))
 //                    .exceptionally(throwable -> {
 //                        log.error("异步邮件发送失败", throwable);
@@ -183,7 +182,7 @@
 ////    /**
 ////     * 批量发送邮件示例
 ////     */
-////    public void sendBatchEmails() {
+////    public void sendBatchEasyMails() {
 ////        List<String> recipients = Arrays.asList(
 ////                "recipient1@example.com",
 ////                "recipient2@example.com",
@@ -193,14 +192,14 @@
 ////        String subject = "批量测试邮件";
 ////        String content = "这是一封批量发送的测试邮件。";
 ////
-////        int successCount = mailService.sendBatchEmails(recipients, subject, content, false);
+////        int successCount = mailService.sendBatchEasyMails(recipients, subject, content, false);
 ////        log.info("批量邮件发送完成，成功发送: {}/{}", successCount, recipients.size());
 ////    }
 ////
 ////    /**
 ////     * 企业级邮件发送服务示例
 ////     */
-////    private void enterpriseEmailServiceExamples() {
+////    private void enterpriseEasyMailServiceExamples() {
 ////        log.info("=== 企业级邮件发送服务示例 ===");
 ////
 ////        // 检查连接
@@ -224,7 +223,7 @@
 ////     */
 ////    private void checkConnection() {
 ////        log.info("检查邮件服务连接...");
-////        boolean connected = emailSenderService.checkConnection();
+////        boolean connected = EasyMailSenderService.checkConnection();
 ////        log.info("连接状态: {}", connected ? "正常" : "异常");
 ////    }
 ////
@@ -237,21 +236,21 @@
 ////        String recipient = "example@example.com"; // 替换为实际收件人
 ////
 ////        // 发送文本邮件
-////        SendResult textResult = emailSenderService.sendText(
+////        SendResult textResult = EasyMailSenderService.sendText(
 ////                recipient,
 ////                "文本邮件测试",
 ////                "这是一封测试文本邮件，发送时间：" + System.currentTimeMillis());
 ////        log.info("文本邮件发送结果: {}", textResult.isSuccess() ? "成功" : "失败: " + textResult.getErrorMessage());
 ////
 ////        // 发送HTML邮件
-////        SendResult htmlResult = emailSenderService.sendHtml(
+////        SendResult htmlResult = EasyMailSenderService.sendHtml(
 ////                recipient,
 ////                "HTML邮件测试",
 ////                "<h2>HTML邮件测试</h2><p>这是一封<strong>HTML格式</strong>的测试邮件</p>");
 ////        log.info("HTML邮件发送结果: {}", htmlResult.isSuccess() ? "成功" : "失败: " + htmlResult.getErrorMessage());
 ////
 ////        // 批量发送邮件
-////        SendResult batchResult = emailSenderService.sendToMultiple(
+////        SendResult batchResult = EasyMailSenderService.sendToMultiple(
 ////                Arrays.asList(recipient, "another@example.com"),
 ////                "批量邮件测试",
 ////                "这是一封批量发送的测试邮件", false);
@@ -271,14 +270,14 @@
 ////        verifyVars.put("code", "123456");
 ////        verifyVars.put("expireMinutes", 10);
 ////
-////        boolean builtinResult = emailSenderStarter.sendWithTemplate(
+////        boolean builtinResult = EasyMailSenderStarter.sendWithTemplate(
 ////                recipient,
 ////                "verification",
 ////                verifyVars);
 ////        log.info("内置模板邮件发送结果: {}", builtinResult ? "成功" : "失败");
 ////
 ////        // 创建自定义模板
-////        EmailTemplate welcomeTemplate = EmailTemplate.builder()
+////        EasyMailTemplate welcomeTemplate = EasyMailTemplate.builder()
 ////                .templateId("custom-welcome")
 ////                .templateName("欢迎模板")
 ////                .subjectTemplate("欢迎加入{{company}}")
@@ -287,7 +286,7 @@
 ////                .build();
 ////
 ////        // 注册模板
-////        emailSenderStarter.getTemplateManager().registerTemplate(welcomeTemplate);
+////        EasyMailSenderStarter.getTemplateManager().registerTemplate(welcomeTemplate);
 ////
 ////        // 准备模板变量
 ////        Map<String, Object> variables = new HashMap<>();
@@ -295,7 +294,7 @@
 ////        variables.put("company", "示例公司");
 ////
 ////        // 使用模板发送邮件
-////        SendResult templateResult = emailSenderService.sendWithTemplate(
+////        SendResult templateResult = EasyMailSenderService.sendWithTemplate(
 ////                recipient,
 ////                welcomeTemplate,
 ////                variables);
@@ -311,7 +310,7 @@
 ////        String recipient = "example@example.com"; // 替换为实际收件人
 ////
 ////        // 异步发送邮件
-////        emailSenderService.sendAsync(
+////        EasyMailSenderService.sendAsync(
 ////                Arrays.asList(recipient),
 ////                null, null,
 ////                "异步邮件测试",
@@ -323,7 +322,7 @@
 ////                });
 ////
 ////        // 使用便捷方法发送带回调的邮件
-////        emailSenderStarter.sendWithCallback(
+////        EasyMailSenderStarter.sendWithCallback(
 ////                recipient,
 ////                "带回调的邮件测试",
 ////                "这是一封带回调的测试邮件",
@@ -338,26 +337,26 @@
 ////        log.info("=== 统计信息示例 ===");
 ////
 ////        // 获取发送统计信息
-////        String stats = emailSenderService.getSendingStats();
+////        String stats = EasyMailSenderService.getSendingStats();
 ////        log.info("发送统计: {}", stats);
 ////
 ////        // 获取线程池状态
-////        String poolStatus = emailSenderService.getThreadPoolStatus();
+////        String poolStatus = EasyMailSenderService.getThreadPoolStatus();
 ////        log.info("线程池状态: {}", poolStatus);
 ////
 ////        // 获取模板统计信息
-////        log.info("模板数量: {}", emailSenderStarter.getTemplateNames().size());
-////        log.info("模板列表: {}", emailSenderStarter.getTemplateNames());
+////        log.info("模板数量: {}", EasyMailSenderStarter.getTemplateNames().size());
+////        log.info("模板列表: {}", EasyMailSenderStarter.getTemplateNames());
 ////    }
 ////
 ////    /**
 ////     * 发送验证码邮件示例
 ////     *
-////     * @param email 收件人邮箱
+////     * @param EasyMail 收件人邮箱
 ////     * @param verificationCode 验证码
 ////     * @return 是否发送成功
 ////     */
-////    public boolean sendVerificationCodeEmail(String email, String verificationCode) {
+////    public boolean sendVerificationCodeEasyMail(String EasyMail, String verificationCode) {
 ////        String subject = "您的验证码";
 ////        String htmlContent = ""
 ////                + "<html>"
@@ -375,18 +374,18 @@
 ////                + "</body>"
 ////                + "</html>";
 ////
-////        return mailService.sendHtmlEmail(email, subject, htmlContent);
+////        return mailService.sendHtmlEasyMail(EasyMail, subject, htmlContent);
 ////    }
 ////
 ////    /**
 ////     * 发送通知邮件示例
 ////     *
-////     * @param email 收件人邮箱
+////     * @param EasyMail 收件人邮箱
 ////     * @param title 通知标题
 ////     * @param message 通知内容
 ////     * @return 是否发送成功
 ////     */
-////    public boolean sendNotificationEmail(String email, String title, String message) {
+////    public boolean sendNotificationEasyMail(String EasyMail, String title, String message) {
 ////        String subject = "通知: " + title;
 ////        String htmlContent = ""
 ////                + "<html>"
@@ -402,6 +401,6 @@
 ////                + "</body>"
 ////                + "</html>";
 ////
-////        return mailService.sendHtmlEmail(email, subject, htmlContent);
+////        return mailService.sendHtmlEasyMail(EasyMail, subject, htmlContent);
 ////    }
 ////}

@@ -1,6 +1,6 @@
 //package cn.sunyblog.easymail.example;
 //
-//import cn.sunyblog.easymail.mail.MailService;
+//import cn.sunyblog.easymail.mail.EasyMailService;
 //import lombok.extern.slf4j.Slf4j;
 //import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.stereotype.Component;
@@ -18,7 +18,7 @@
 //public class EmailProcessorExample {
 //
 //    @Autowired
-//    private MailService mailService;
+//    private EasyMailService mailService;
 //
 //    /**
 //     * 处理验证码邮件

@@ -6,7 +6,7 @@
     <artifactId>easymail-spring-boot-starter</artifactId>
     <version>1.0.0</version>
     <name>EasyMail</name>
-    <description>EasyMail - 企业级邮件处理SDK，提供邮件监听、处理和发送的完整解决方案</description>
+    <description>EasyMail - 高度自定义邮箱服务工具，提供邮件监听、处理和发送的完整解决方案</description>
     <url>https://github.com/sunyblog/easymail</url>
     
     <licenses>
@@ -19,7 +19,7 @@
     <developers>
         <developer>
             <name>sunyblog</name>
-            <email>contact@sunyblog.cn</email>
+            <email>3379652824@qq.com</email>
         </developer>
     </developers>
     <properties>

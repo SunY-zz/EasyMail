@@ -28,7 +28,7 @@
 //    @PostConstruct
 //    public void init() {
 //        // 使用lambda表达式设置邮件处理函数
-//        mailProcessor.setEmailProcessorFunction(this::processVerificationEmail);
+//        mailProcessor.setEasyMailProcessorFunction(this::processVerificationEmail);
 //        log.info("函数式邮件处理器已注册");
 //    }
 //

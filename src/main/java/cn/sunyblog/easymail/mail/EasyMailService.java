@@ -39,7 +39,7 @@ public class EasyMailService {
     private final AtomicBoolean isMailServiceRunning = new AtomicBoolean(false);
 
     /**
-     * 服务初始化
+     * 服务初始化，调用前请先配置正确的邮件配置
      */
     //@PostConstruct
     public void init() {

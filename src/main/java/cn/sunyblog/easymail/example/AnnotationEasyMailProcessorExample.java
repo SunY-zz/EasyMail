@@ -1,9 +1,10 @@
 //package cn.sunyblog.easymail.example;
 //
 //
-//import cn.sunyblog.easymail.processor.annotation.EmailHandler;
-//import cn.sunyblog.easymail.processor.annotation.EmailProcessor;
-//import cn.sunyblog.easymail.processor.handler.EmailContext;
+//
+//import cn.sunyblog.easymail.processor.annotation.EasyMailProcessor;
+//import cn.sunyblog.easymail.processor.annotation.EasyMailProcessorHandler;
+//import cn.sunyblog.easymail.processor.handler.EasyMailContext;
 //import lombok.extern.slf4j.Slf4j;
 //import org.springframework.stereotype.Component;
 //
@@ -13,7 +14,7 @@
 //
 ///**
 // * 注解驱动邮件处理器示例
-// * 展示如何使用 @EmailProcessor 和 @EmailHandler 注解来处理不同类型的邮件
+// * 展示如何使用 @EasyMailProcessor 和 @EasyMailProcessorHandler 注解来处理不同类型的邮件
 // *
 // * @author suny
 // * @version 1.0
@@ -21,26 +22,26 @@
 // */
 //@Slf4j
 //@Component
-//@EmailProcessor(
+//@EasyMailProcessor(
 //    group = "example",
 //    description = "示例邮件处理器，展示注解驱动的邮件处理功能",
 //    enabled = true
 //)
-//public class AnnotationEmailProcessorExample {
+//public class AnnotationEasyMailProcessorExample {
 //
 //    /**
 //     * 处理验证码邮件
 //     * 匹配主题包含"验证码"或"verification"的邮件
 //     */
-//    @EmailHandler(
+//    @EasyMailProcessorHandler(
 //        name = "verificationCodeHandler",
 //        description = "处理验证码邮件",
 //        subject = "(?i).*(验证码|verification|code).*",
-//        subjectMatchType = EmailHandler.MatchType.REGEX,
+//        subjectMatchType = EasyMailProcessorHandler.MatchType.REGEX,
 //        priority = 100,
 //        async = false
 //    )
-//    public void handleVerificationCode(EmailContext context) {
+//    public void handleVerificationCode(EasyMailContext context) {
 //        log.info("=== 验证码邮件处理器 ===");
 //        log.info("邮件主题: {}", context.getSubject());
 //        log.info("发件人: {}", context.getSender());
@@ -64,15 +65,15 @@
 //     * 处理订单相关邮件
 //     * 匹配主题包含"订单"、"order"或"购买"的邮件
 //     */
-//    @EmailHandler(
+//    @EasyMailProcessorHandler(
 //        name = "orderHandler",
 //        description = "处理订单相关邮件",
 //        subject = "(?i).*(订单|order|购买|purchase|支付|payment).*",
-//        subjectMatchType = EmailHandler.MatchType.REGEX,
+//        subjectMatchType = EasyMailProcessorHandler.MatchType.REGEX,
 //        priority = 90,
 //        async = true
 //    )
-//    public void handleOrderEmail(EmailContext context) {
+//    public void handleOrderEasyMail(EasyMailContext context) {
 //        log.info("=== 订单邮件处理器 ===");
 //        log.info("邮件主题: {}", context.getSubject());
 //        log.info("发件人: {}", context.getSender());
@@ -98,15 +99,15 @@
 //     * 处理通知类邮件
 //     * 匹配发件人包含"noreply"或"notification"的邮件
 //     */
-//    @EmailHandler(
+//    @EasyMailProcessorHandler(
 //        name = "notificationHandler",
 //        description = "处理系统通知邮件",
 //        from = "(?i).*(noreply|notification|system|admin).*",
-//        fromMatchType = EmailHandler.MatchType.REGEX,
+//        fromMatchType = EasyMailProcessorHandler.MatchType.REGEX,
 //        priority = 80,
 //        async = true
 //    )
-//    public void handleNotification(EmailContext context) {
+//    public void handleNotification(EasyMailContext context) {
 //        log.info("=== 通知邮件处理器 ===");
 //        log.info("邮件主题: {}", context.getSubject());
 //        log.info("发件人: {}", context.getSender());
@@ -136,15 +137,15 @@
 //     * 处理测试邮件
 //     * 使用传统的Message参数方式
 //     */
-//    @EmailHandler(
+//    @EasyMailProcessorHandler(
 //        name = "testHandler",
 //        description = "处理测试邮件（传统参数方式）",
 //        subject = "(?i).*test.*",
-//        subjectMatchType = EmailHandler.MatchType.REGEX,
+//        subjectMatchType = EasyMailProcessorHandler.MatchType.REGEX,
 //        priority = 70,
 //        async = false
 //    )
-//    public void handleTestEmail(Message message, String subject, String sender, String content) {
+//    public void handleTestEasyMail(Message message, String subject, String sender, String content) {
 //        log.info("=== 测试邮件处理器（传统方式） ===");
 //        log.info("邮件主题: {}", subject);
 //        log.info("发件人: {}", sender);
@@ -162,15 +163,15 @@
 //     * 默认处理器 - 处理所有其他邮件
 //     * 优先级最低，作为兜底处理
 //     */
-//    @EmailHandler(
+//    @EasyMailProcessorHandler(
 //        name = "defaultHandler",
 //        description = "默认邮件处理器",
 //        subject = ".*",
-//        subjectMatchType = EmailHandler.MatchType.REGEX,
+//        subjectMatchType = EasyMailProcessorHandler.MatchType.REGEX,
 //        priority = 10,
 //        async = true
 //    )
-//    public void handleDefaultEmail(EmailContext context) {
+//    public void handleDefaultEasyMail(EasyMailContext context) {
 //        log.info("=== 默认邮件处理器 ===");
 //        log.info("邮件主题: {}", context.getSubject());
 //        log.info("发件人: {}", context.getSender());
