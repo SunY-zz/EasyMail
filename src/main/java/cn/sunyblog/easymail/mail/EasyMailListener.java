@@ -352,6 +352,13 @@ public class EasyMailListener {
                         }
                         TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
                     } catch (Exception reconnectEx) {
+                        // 检查是否为认证失败异常
+                        if (isAuthenticationFailure(reconnectEx)) {
+                            log.warn("重新打开文件夹时认证失败，停止监听服务");
+                            isRunning.set(false);
+                            break;
+                        }
+                        
                         EasyMailException connectionEx = EasyMailExceptionHandler.wrapException(reconnectEx,
                                 "重新打开文件夹失败");
                         log.error(connectionEx.getFullErrorMessage(), connectionEx);
@@ -363,14 +370,30 @@ public class EasyMailListener {
                         }
                     }
                 } catch (MessagingException me) {
+                    // 检查是否为认证失败异常
+                    if (isAuthenticationFailure(me)) {
+                        log.warn("邮件服务器认证失败，停止监听服务");
+                        isRunning.set(false);
+                        break;
+                    }
+                    
                     EasyMailException connectionEx = EasyMailExceptionHandler.wrapMessagingException(me,
                             "邮件服务异常");
                     log.error(connectionEx.getFullErrorMessage(), connectionEx);
+                    
+                    // 只有在非认证失败的情况下才尝试重连
                     try {
                         // 尝试重新连接
                         serverConnector.reconnectIfNeeded(store, folder);
                         TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getReconnectDelay());
                     } catch (Exception reconnectEx) {
+                        // 检查重连异常是否也是认证失败
+                        if (isAuthenticationFailure(reconnectEx)) {
+                            log.warn("重连时认证失败，停止监听服务");
+                            isRunning.set(false);
+                            break;
+                        }
+                        
                         EasyMailException reconnectConnectionEx = EasyMailExceptionHandler.wrapException(reconnectEx,
                                 "重新连接失败");
                         log.error(reconnectConnectionEx.getFullErrorMessage(), reconnectConnectionEx);
@@ -413,7 +436,7 @@ public class EasyMailListener {
                         folder.getMessageCount();
                         log.debug("发送保活信号");
                     } else {
-                        log.warn("邮件连接已断开，等待主线程重连");
+                        log.debug("邮件连接已断开，等待主线程重连");
                     }
                     TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getKeepAliveInterval());
                 } catch (InterruptedException e) {
@@ -426,9 +449,15 @@ public class EasyMailListener {
                     break;
                 } catch (Exception e) {
                     if (isRunning.get()) {
-                        EasyMailException connectionEx = EasyMailExceptionHandler.wrapException(e,
-                                "保活线程异常");
-                        log.warn(connectionEx.getFullErrorMessage());
+                        // 检查是否为认证失败异常
+                        if (isAuthenticationFailure(e)) {
+                            log.warn("保活线程检测到认证失败，停止监听服务");
+                            isRunning.set(false);
+                            break;
+                        }
+                        
+                        // 对于其他异常，只记录debug级别日志，避免过多错误日志
+                        log.debug("保活线程异常: {}", e.getMessage());
                         try {
                             TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
                         } catch (InterruptedException ie) {
@@ -462,6 +491,12 @@ public class EasyMailListener {
         // 如果正在处理事件通知，则跳过本次轮询
         if (processingEvent.get()) {
             log.debug("正在处理邮件事件，跳过本次轮询");
+            return;
+        }
+
+        // 检查连接状态，如果连接已断开则不进行轮询
+        if (store == null || !store.isConnected()) {
+            log.debug("邮件服务器连接已断开，跳过轮询检查");
             return;
         }
 
@@ -509,12 +544,42 @@ public class EasyMailListener {
         } catch (Exception e) {
             // 只有在服务运行时才记录为错误
             if (isRunning.get()) {
-                EasyMailProcessException processEx = EasyMailProcessException.processingError("轮询检查邮件异常", e);
-                log.error(processEx.getFullErrorMessage(), processEx);
+                // 检查是否为认证失败异常，如果是则不记录详细错误信息
+                if (isAuthenticationFailure(e)) {
+                    log.warn("邮件服务器认证失败，停止轮询检查");
+                    // 认证失败时停止监听服务
+                    isRunning.set(false);
+                } else {
+                    EasyMailProcessException processEx = EasyMailProcessException.processingError("轮询检查邮件异常", e);
+                    log.error(processEx.getFullErrorMessage(), processEx);
+                }
             } else {
                 log.debug("邮件监听服务已停止，操作被中断: {}", e.getMessage());
             }
         }
+    }
+
+    /**
+     * 检查是否为认证失败异常
+     */
+    private boolean isAuthenticationFailure(Exception e) {
+        String message = e.getMessage();
+        if (message == null) {
+            return false;
+        }
+        return message.contains("Unsafe Login") || 
+               message.contains("authentication failed") ||
+               message.contains("LOGIN failed") ||
+               message.contains("Invalid credentials") ||
+               message.contains("AUTH") ||
+               message.contains("AUTHENTICATE");
+    }
+    
+    /**
+     * 检查是否为认证失败异常（MessagingException版本）
+     */
+    private boolean isAuthenticationFailure(MessagingException e) {
+        return isAuthenticationFailure((Exception) e);
     }
 
     /**
