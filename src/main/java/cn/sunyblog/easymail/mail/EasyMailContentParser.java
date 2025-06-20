@@ -25,7 +25,7 @@ public class EasyMailContentParser {
      * 解析邮件内容
      *
      * @param message 邮件消息
-     * @param saveDir 附件保存目录
+     * @param saveDir 附件保存目录（可以为null，此时跳过附件保存）
      * @return 解析后的文本内容
      * @throws MessagingException 邮件异常
      * @throws IOException        IO异常
@@ -87,7 +87,7 @@ public class EasyMailContentParser {
      * 解析多部分邮件
      *
      * @param multipart 多部分邮件
-     * @param saveDir   附件保存目录
+     * @param saveDir   附件保存目录（可以为null，此时跳过附件保存）
      * @return 解析后的文本内容
      * @throws MessagingException 邮件异常
      * @throws IOException        IO异常
@@ -112,8 +112,29 @@ public class EasyMailContentParser {
                 contentBuilder.append(plainText);
             } else if (bodyPart.isMimeType("multipart/*")) {
                 contentBuilder.append(parseMultipart((Multipart) bodyPart.getContent(), saveDir));
-            } else if (bodyPart.isMimeType("application/octet-stream")) {
-                parseAttachment(bodyPart, saveDir);
+            } else {
+                // 检查是否为附件（通过disposition或其他MIME类型）
+                String disposition = bodyPart.getDisposition();
+                if (disposition != null && (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT) || 
+                                          disposition.equalsIgnoreCase(BodyPart.INLINE))) {
+                    try {
+                        parseAttachment(bodyPart, saveDir);
+                    } catch (Exception e) {
+                        log.warn("附件解析失败，跳过该附件: {}", e.getMessage());
+                    }
+                } else if (bodyPart.isMimeType("application/*") || 
+                          bodyPart.isMimeType("image/*") || 
+                          bodyPart.isMimeType("audio/*") || 
+                          bodyPart.isMimeType("video/*")) {
+                    // 其他可能的附件类型
+                    try {
+                        parseAttachment(bodyPart, saveDir);
+                    } catch (Exception e) {
+                        log.warn("附件解析失败，跳过该附件: {}", e.getMessage());
+                    }
+                } else {
+                    log.debug("跳过未知类型的邮件部分: {}", bodyPart.getContentType());
+                }
             }
         }
 
@@ -130,10 +151,27 @@ public class EasyMailContentParser {
     private void parseAttachment(BodyPart bodyPart, String saveDir) throws MessagingException {
         String disposition = bodyPart.getDisposition();
 
-        if (disposition != null && disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
+        // 检查是否为附件（ATTACHMENT或INLINE类型，或者有文件名的部分）
+        boolean isAttachment = (disposition != null && 
+                               (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT) || 
+                                disposition.equalsIgnoreCase(BodyPart.INLINE))) ||
+                              bodyPart.getFileName() != null;
+
+        if (isAttachment) {
             String fileName = bodyPart.getFileName();
             if (fileName == null) fileName = "unknown_file";
             fileName = decodeText(fileName);
+
+            // 处理saveDir为null的情况
+            if (saveDir == null || saveDir.trim().isEmpty()) {
+                log.warn("附件保存目录未配置，跳过附件保存: {}", fileName);
+                return;
+            }
+
+            // 确保saveDir以文件分隔符结尾
+            if (!saveDir.endsWith(File.separator)) {
+                saveDir = saveDir + File.separator;
+            }
 
             File outputDir = new File(saveDir);
             if (!outputDir.exists()) {
