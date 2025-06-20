@@ -30,7 +30,7 @@ public class EasyMailService {
     @Resource
     private EasyMailListener easyMailListener;
     @Resource
-    private MailProcessor mailProcessor;
+    private EasyMailProcessor easyMailProcessor;
     @Resource
     private EasyMailSender easyMailSender;
     private boolean autoStart = false;
@@ -136,6 +136,6 @@ public class EasyMailService {
      * @return 处理统计信息
      */
     public String getMailProcessingStats() {
-        return mailProcessor.getProcessingStats();
+        return easyMailProcessor.getProcessingStats();
     }
 }

@@ -59,9 +59,9 @@ public class EasyMailListenerAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public MailProcessor mailProcessor(EasyMailCache easyMailCache, EasyMailContentParser contentParser,
-                                       EasyMailListenerProperties properties, EasyMailListenerApi easyMailListenerApi) {
-        MailProcessor processor = new MailProcessor();
+    public EasyMailProcessor mailProcessor(EasyMailCache easyMailCache, EasyMailContentParser contentParser,
+                                           EasyMailListenerProperties properties, EasyMailListenerApi easyMailListenerApi) {
+        EasyMailProcessor processor = new EasyMailProcessor();
         processor.setEasyMailCache(easyMailCache);
         processor.setContentParser(contentParser);
         processor.setMailConfig(convertToMailConfig(properties));
@@ -74,12 +74,12 @@ public class EasyMailListenerAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public EasyMailListener mailListener(EasyMailServerConnector connector, MailProcessor processor,
+    public EasyMailListener mailListener(EasyMailServerConnector connector, EasyMailProcessor processor,
                                          EasyMailListenerProperties properties, EasyMailCache easyMailCache,
                                          ExecutorService noticeThreadPool) {
         EasyMailListener listener = new EasyMailListener();
         listener.setEasyMailServerConnector(connector);
-        listener.setMailProcessor(processor);
+        listener.setEasyMailProcessor(processor);
         listener.setMailConfig(convertToMailConfig(properties));
         listener.setEasyMailCache(easyMailCache);
         listener.setNoticeThreadPool(noticeThreadPool);
@@ -101,11 +101,11 @@ public class EasyMailListenerAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public EasyMailService mailService(EasyMailListener easyMailListener, EasyMailServerConnector easyMailServerConnector,
-                                       MailProcessor mailProcessor, EasyMailSender easyMailSender, EasyMailListenerProperties properties) {
+                                       EasyMailProcessor easyMailProcessor, EasyMailSender easyMailSender, EasyMailListenerProperties properties) {
         EasyMailService service = new EasyMailService();
         service.setEasyMailListener(easyMailListener);
         service.setEasyMailServerConnector(easyMailServerConnector);
-        service.setMailProcessor(mailProcessor);
+        service.setEasyMailProcessor(easyMailProcessor);
         service.setEasyMailSender(easyMailSender);
         service.setAutoStart(properties.getListener().isAutoStart());
         return service;

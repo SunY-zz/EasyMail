@@ -187,7 +187,7 @@ EasyMailRequest attachmentRequest = EasyMailRequest.builder()
     .attachment(new File("path/to/file2.jpg"))
     .build();
 
-result = easyMailSenderService.send(attachmentRequest);
+EasyMailSendResult result = easyMailSenderService.send(attachmentRequest);
 ```
 
 #### 1.3 异步邮件发送
@@ -302,7 +302,7 @@ EasyMailRequest templateRequest = EasyMailRequest.builder()
     .variable("loginUrl", "https://example.com/login")
     .build();
 
-result = easyMailSenderService.send(templateRequest);
+EasyMailSendResult result = easyMailSenderService.send(templateRequest);
 ```
 
 ### 3. 邮件监听和处理
@@ -1298,7 +1298,7 @@ EasyMail 采用分层架构设计：
 ## 项目优点
 
 ### 1. 易用性
-- 零配置启动，开箱即用
+- 配置简单，开箱即用
 - 注解驱动，简化开发
 - Builder模式，链式调用
 - 丰富的示例和文档

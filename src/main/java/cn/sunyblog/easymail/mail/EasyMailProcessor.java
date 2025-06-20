@@ -28,7 +28,7 @@ import cn.sunyblog.easymail.exception.EasyMailProcessException;
 @Slf4j
 @Data
 @Component
-public class MailProcessor {
+public class EasyMailProcessor {
 
     @Resource
     private EasyMailConfig mailConfig;

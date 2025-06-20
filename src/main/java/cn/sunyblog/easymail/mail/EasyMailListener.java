@@ -34,7 +34,7 @@ public class EasyMailListener {
     @Resource
     private EasyMailConfig mailConfig;
     @Resource
-    private MailProcessor mailProcessor;
+    private EasyMailProcessor easyMailProcessor;
     @Resource
     private ExecutorService noticeThreadPool;
     @Resource
@@ -195,7 +195,7 @@ public class EasyMailListener {
                     // 使用线程池处理邮件，不阻塞JavaMail事件线程
                     for (Message message : messages) {
                         final Message finalMessage = message;
-                        noticeThreadPool.execute(() -> mailProcessor.processMessage(finalMessage));
+                        noticeThreadPool.execute(() -> easyMailProcessor.processMessage(finalMessage));
                     }
 
                     long eventEndTime = System.currentTimeMillis();
@@ -234,7 +234,7 @@ public class EasyMailListener {
                 final Message finalMessage = message;
                 noticeThreadPool.execute(() -> {
                     try {
-                        boolean processed = mailProcessor.processMessage(finalMessage);
+                        boolean processed = easyMailProcessor.processMessage(finalMessage);
                         if (processed) {
                             synchronized (lock) {
                                 processedCount[0]++;
@@ -494,7 +494,7 @@ public class EasyMailListener {
                         continue;
                     }
 
-                    noticeThreadPool.execute(() -> mailProcessor.processMessage(message));
+                    noticeThreadPool.execute(() -> easyMailProcessor.processMessage(message));
                 }
             } else {
                 log.debug("轮询检查：没有新邮件");
