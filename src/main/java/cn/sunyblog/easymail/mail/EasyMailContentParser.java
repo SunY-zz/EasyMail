@@ -191,14 +191,38 @@ public class EasyMailContentParser {
                 byte[] buffer = new byte[8192]; // 增大缓冲区
                 int bytesRead;
                 long total = 0;
+                long startTime = System.currentTimeMillis();
+                final long MAX_ATTACHMENT_SIZE = 50 * 1024 * 1024; // 50MB限制
+                final long MAX_PROCESS_TIME = 30 * 1000; // 30秒超时
 
                 while ((bytesRead = is.read(buffer)) != -1) {
+                    // 检查文件大小限制
+                    if (total + bytesRead > MAX_ATTACHMENT_SIZE) {
+                        log.warn("附件 {} 超过大小限制 {}MB，停止保存", fileName, MAX_ATTACHMENT_SIZE / (1024 * 1024));
+                        throw new EasyMailProcessException("附件超过大小限制: " + fileName);
+                    }
+                    
+                    // 检查处理时间限制
+                    if (System.currentTimeMillis() - startTime > MAX_PROCESS_TIME) {
+                        log.warn("附件 {} 保存超时，停止保存", fileName);
+                        throw new EasyMailProcessException("附件保存超时: " + fileName);
+                    }
+                    
                     os.write(buffer, 0, bytesRead);
                     total += bytesRead;
                 }
 
                 log.info("附件保存成功: {}, 大小: {} 字节", fileName, total);
             } catch (IOException e) {
+                // 删除可能创建的不完整文件
+                if (targetFile.exists()) {
+                    try {
+                        Files.delete(targetFile.toPath());
+                        log.debug("已删除不完整的附件文件: {}", targetFile.getAbsolutePath());
+                    } catch (IOException deleteEx) {
+                        log.warn("删除不完整附件文件失败: {}", deleteEx.getMessage());
+                    }
+                }
                 throw EasyMailProcessException.processingError("保存附件失败: " + fileName, e);
             }
         }

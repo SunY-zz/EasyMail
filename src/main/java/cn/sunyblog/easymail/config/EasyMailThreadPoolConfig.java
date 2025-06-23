@@ -38,7 +38,12 @@ public class EasyMailThreadPoolConfig {
 
         // 使用自定义的拒绝策略
         RejectedExecutionHandler rejectedExecutionHandler = (r, executor) -> {
-            log.error("通知任务被拒绝，线程池已满");
+            if (!executor.isShutdown()) {
+                log.warn("通知任务被拒绝，线程池已满 - 活跃线程: {}, 队列大小: {}, 已完成任务: {}", 
+                        executor.getActiveCount(), executor.getQueue().size(), executor.getCompletedTaskCount());
+            } else {
+                log.debug("线程池已关闭，任务被拒绝");
+            }
         };
 
         // 创建线程池

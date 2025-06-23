@@ -186,6 +186,12 @@ public class EasyMailListener {
         folder.addMessageCountListener(new MessageCountAdapter() {
             @Override
             public void messagesAdded(MessageCountEvent e) {
+                // 检查服务是否仍在运行
+                if (!isRunning.get()) {
+                    log.debug("邮件监听服务已停止，忽略新邮件事件");
+                    return;
+                }
+                
                 processingEvent.set(true); // 设置标志位
                 try {
                     Message[] messages = e.getMessages();
@@ -194,8 +200,26 @@ public class EasyMailListener {
 
                     // 使用线程池处理邮件，不阻塞JavaMail事件线程
                     for (Message message : messages) {
+                        // 再次检查服务状态，避免在处理过程中服务被关闭
+                        if (!isRunning.get()) {
+                            log.debug("邮件监听服务已停止，跳过新邮件处理");
+                            break;
+                        }
+                        
                         final Message finalMessage = message;
-                        noticeThreadPool.execute(() -> easyMailProcessor.processMessage(finalMessage));
+                        try {
+                            noticeThreadPool.execute(() -> {
+                                // 在任务执行时检查状态
+                                if (!isRunning.get()) {
+                                    log.debug("邮件监听服务已停止，跳过邮件处理任务");
+                                    return;
+                                }
+                                easyMailProcessor.processMessage(finalMessage);
+                            });
+                        } catch (java.util.concurrent.RejectedExecutionException eg) {
+                            log.warn("线程池已满，跳过邮件处理: {}", eg.getMessage());
+                            break; // 线程池满了就停止提交新任务
+                        }
                     }
 
                     long eventEndTime = System.currentTimeMillis();
@@ -231,19 +255,36 @@ public class EasyMailListener {
             CountDownLatch latch = new CountDownLatch(messages.length);
 
             for (Message message : messages) {
+                // 检查服务是否仍在运行，避免在关闭过程中提交新任务
+                if (!isRunning.get()) {
+                    log.debug("邮件监听服务已停止，跳过未读邮件处理");
+                    latch.countDown(); // 减少计数器
+                    continue;
+                }
+                
                 final Message finalMessage = message;
-                noticeThreadPool.execute(() -> {
-                    try {
-                        boolean processed = easyMailProcessor.processMessage(finalMessage);
-                        if (processed) {
-                            synchronized (lock) {
-                                processedCount[0]++;
+                try {
+                    noticeThreadPool.execute(() -> {
+                        try {
+                            // 在任务执行时再次检查状态
+                            if (!isRunning.get()) {
+                                log.debug("邮件监听服务已停止，跳过邮件处理任务");
+                                return;
                             }
+                            boolean processed = easyMailProcessor.processMessage(finalMessage);
+                            if (processed) {
+                                synchronized (lock) {
+                                    processedCount[0]++;
+                                }
+                            }
+                        } finally {
+                            latch.countDown();
                         }
-                    } finally {
-                        latch.countDown();
-                    }
-                });
+                    });
+                } catch (java.util.concurrent.RejectedExecutionException e) {
+                    log.warn("线程池已满，跳过未读邮件处理: {}", e.getMessage());
+                    latch.countDown(); // 确保计数器正确减少
+                }
             }
 
             // 等待所有邮件处理完成，最多等待60秒
@@ -590,16 +631,59 @@ public class EasyMailListener {
     public void stopListening(EasyMailServerConnector serverConnector) {
         log.info("正在关闭邮件监听服务");
 
+        // 首先设置停止标志，阻止新任务提交
         isRunning.set(false);
 
+        // 优雅关闭线程池
+        if (noticeThreadPool != null && !noticeThreadPool.isShutdown()) {
+            log.info("正在关闭邮件处理线程池");
+            noticeThreadPool.shutdown(); // 不再接受新任务
+            
+            try {
+                // 先等待3秒让正在执行的任务完成
+                if (!noticeThreadPool.awaitTermination(3, TimeUnit.SECONDS)) {
+                    log.warn("邮件处理任务未能在3秒内完成，强制关闭线程池");
+                    noticeThreadPool.shutdownNow(); // 强制关闭
+                    
+                    // 再等待1秒确保线程被中断
+                    if (!noticeThreadPool.awaitTermination(1, TimeUnit.SECONDS)) {
+                        log.error("无法强制关闭邮件处理线程池");
+                    } else {
+                        log.info("邮件处理线程池已强制关闭");
+                    }
+                } else {
+                    log.info("邮件处理线程池已优雅关闭");
+                }
+            } catch (InterruptedException e) {
+                log.warn("等待线程池关闭被中断");
+                noticeThreadPool.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        // 中断监听线程
         if (monitorThread != null) {
             monitorThread.interrupt();
+            try {
+                monitorThread.join(3000); // 等待最多3秒
+            } catch (InterruptedException e) {
+                log.warn("等待监听线程结束被中断");
+                Thread.currentThread().interrupt();
+            }
         }
 
+        // 中断保活线程
         if (keepAliveThread != null) {
             keepAliveThread.interrupt();
+            try {
+                keepAliveThread.join(3000); // 等待最多3秒
+            } catch (InterruptedException e) {
+                log.warn("等待保活线程结束被中断");
+                Thread.currentThread().interrupt();
+            }
         }
 
+        // 最后关闭邮件服务器连接
         serverConnector.closeConnection(folder, store);
 
         log.info("邮件监听服务已成功关闭");

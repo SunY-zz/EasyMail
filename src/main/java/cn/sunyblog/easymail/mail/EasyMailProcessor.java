@@ -38,6 +38,10 @@ public class EasyMailProcessor {
     private EasyMailCache easyMailCache;
     @Resource
     private EasyMailListenerApi easyMailListenerApi;
+    
+    // 移除对EasyMailService的直接依赖，避免循环依赖
+    // 使用volatile确保线程安全的状态检查
+    private volatile boolean serviceRunning = true;
 
     @Autowired(required = false)
     private AnnotationDrivenEasyMailProcessorManager annotationProcessorManager;
@@ -55,6 +59,18 @@ public class EasyMailProcessor {
      * @return 是否成功处理
      */
     public boolean processMessage(Message message) {
+        // 检查邮件服务是否正在运行，如果已关闭则不处理
+        if (!serviceRunning) {
+            log.debug("邮件服务已关闭，跳过邮件处理");
+            return false;
+        }
+        
+        // 检查当前线程是否被中断
+        if (Thread.currentThread().isInterrupted()) {
+            log.debug("处理线程已被中断，跳过邮件处理");
+            return false;
+        }
+        
         try {
             // 获取邮件ID
             String messageId = easyMailCache.getMessageId(message);
@@ -85,10 +101,21 @@ public class EasyMailProcessor {
             // 首先尝试使用注解驱动处理器
             if (annotationProcessorManager != null) {
                 try {
+                    // 再次检查服务状态和线程中断状态
+                    if (!serviceRunning || Thread.currentThread().isInterrupted()) {
+                        log.debug("邮件服务已关闭或线程被中断，停止注解驱动处理");
+                        return false;
+                    }
                     // 直接使用原始message，避免重复解析
                     processed = annotationProcessorManager.processEmail(message, mailConfig.getAttachmentDir());
                     log.info("注解驱动邮件处理完成");
                 } catch (Exception e) {
+                    // 如果是中断异常，直接返回
+                    if (e instanceof InterruptedException || Thread.currentThread().isInterrupted()) {
+                        log.debug("注解驱动处理被中断");
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
                     EasyMailProcessException processEx = EasyMailProcessException.processingError("注解驱动处理器处理失败，回退到其他处理器", e);
                     log.error(processEx.getFullErrorMessage(), processEx);
                 }
@@ -97,12 +124,23 @@ public class EasyMailProcessor {
             // 使用函数式处理方式
             if (!processed && easyMailProcessorFunction != null) {
                 try {
+                    // 检查服务状态和线程中断状态
+                    if (!serviceRunning || Thread.currentThread().isInterrupted()) {
+                        log.debug("邮件服务已关闭或线程被中断，停止函数式处理");
+                        return false;
+                    }
                     // 只有在需要时才解析邮件内容
                     emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
                     Object result = easyMailProcessorFunction.process(message, emailContent, subject, from);
                     processed = (result != null);
                     log.info("函数式邮件处理结果: {}", result);
                 } catch (Exception e) {
+                    // 如果是中断异常，直接返回
+                    if (e instanceof InterruptedException || Thread.currentThread().isInterrupted()) {
+                        log.debug("函数式处理被中断");
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
                     EasyMailProcessException processEx = EasyMailProcessException.processingError("函数式邮件处理异常", e);
                     log.error(processEx.getFullErrorMessage(), processEx);
                 }
@@ -110,17 +148,33 @@ public class EasyMailProcessor {
             // 其次使用接口方式
             else if (!processed && easyMailListenerApi != null) {
                 try {
+                    // 检查服务状态和线程中断状态
+                    if (!serviceRunning || Thread.currentThread().isInterrupted()) {
+                        log.debug("邮件服务已关闭或线程被中断，停止接口处理");
+                        return false;
+                    }
                     // 只有在需要时才解析邮件内容
                     emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
                     processed = easyMailListenerApi.processEmail(message, emailContent, subject, from);
                     log.info("邮件处理器[{}]处理结果: {}", easyMailListenerApi.getProcessorName(), processed);
                 } catch (Exception e) {
+                    // 如果是中断异常，直接返回
+                    if (e instanceof InterruptedException || Thread.currentThread().isInterrupted()) {
+                        log.debug("接口处理被中断");
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
                     EasyMailProcessException processEx = EasyMailProcessException.processingError("邮件处理器[" + easyMailListenerApi.getProcessorName() + "]处理异常", e);
                     log.error(processEx.getFullErrorMessage(), processEx);
                 }
             }
             // 最后使用默认处理方法
             else if (!processed) {
+                // 检查服务状态和线程中断状态
+                if (!serviceRunning || Thread.currentThread().isInterrupted()) {
+                    log.debug("邮件服务已关闭或线程被中断，停止默认处理");
+                    return false;
+                }
                 // 只有在需要时才解析邮件内容
                 emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
                 processed = processVerificationCodeEmail(subject, emailContent);
@@ -131,25 +185,66 @@ public class EasyMailProcessor {
             log.info("邮件处理完成，耗时: {}毫秒", processDuration);
 
             try {
+                // 检查服务状态，避免在服务关闭后操作邮件
+                if (!serviceRunning) {
+                    log.debug("邮件服务已关闭，跳过标记邮件为已读");
+                    return processed;
+                }
                 // 标记为已读
                 message.setFlag(Flags.Flag.SEEN, true);
+                log.debug("邮件已标记为已读");
+            } catch (javax.mail.FolderClosedException ex) {
+                // 文件夹已关闭异常，通常发生在服务停止时
+                if (serviceRunning) {
+                    log.warn("邮件文件夹已关闭，无法标记邮件为已读: {}", ex.getMessage());
+                } else {
+                    log.debug("邮件处理服务已停止，标记操作被中断: {}", ex.getMessage());
+                }
             } catch (MessagingException ex) {
-                EasyMailProcessException processEx = (EasyMailProcessException) EasyMailExceptionHandler.wrapMessagingException(ex, "标记邮件为已读失败");
-                log.error(processEx.getFullErrorMessage(), processEx);
+                // 只有在服务运行时才记录为错误
+                if (serviceRunning) {
+                    EasyMailProcessException processEx = (EasyMailProcessException) EasyMailExceptionHandler.wrapMessagingException(ex, "标记邮件为已读失败");
+                    log.error(processEx.getFullErrorMessage(), processEx);
+                } else {
+                    log.debug("邮件处理服务已停止，标记操作被中断: {}", ex.getMessage());
+                }
             }
 
             return processed;
+        } catch (javax.mail.FolderClosedException e) {
+            // 文件夹已关闭异常，通常发生在服务停止时，这是正常现象
+            if (serviceRunning) {
+                log.warn("邮件文件夹已关闭，可能服务正在停止: {}", e.getMessage());
+            } else {
+                log.debug("邮件处理服务已停止，文件夹操作被中断: {}", e.getMessage());
+            }
+            return false;
         } catch (MessagingException e) {
-            EasyMailProcessException processEx = (EasyMailProcessException) EasyMailExceptionHandler.wrapMessagingException(e, "处理邮件异常");
-            log.error(processEx.getFullErrorMessage(), processEx);
+            // 只有在服务运行时才记录为错误
+            if (serviceRunning) {
+                EasyMailProcessException processEx = (EasyMailProcessException) EasyMailExceptionHandler.wrapMessagingException(e, "处理邮件异常");
+                log.error(processEx.getFullErrorMessage(), processEx);
+            } else {
+                log.debug("邮件处理服务已停止，邮件操作被中断: {}", e.getMessage());
+            }
             return false;
         } catch (IOException e) {
-            EasyMailProcessException processEx = EasyMailProcessException.processingError("处理邮件IO异常", e);
-            log.error(processEx.getFullErrorMessage(), processEx);
+            // 只有在服务运行时才记录为错误
+            if (serviceRunning) {
+                EasyMailProcessException processEx = EasyMailProcessException.processingError("处理邮件IO异常", e);
+                log.error(processEx.getFullErrorMessage(), processEx);
+            } else {
+                log.debug("邮件处理服务已停止，IO操作被中断: {}", e.getMessage());
+            }
             return false;
         } catch (Exception e) {
-            EasyMailProcessException processEx = EasyMailProcessException.processingError("处理邮件失败", e);
-            log.error(processEx.getFullErrorMessage(), processEx);
+            // 只有在服务运行时才记录为错误
+            if (serviceRunning) {
+                EasyMailProcessException processEx = EasyMailProcessException.processingError("处理邮件失败", e);
+                log.error(processEx.getFullErrorMessage(), processEx);
+            } else {
+                log.debug("邮件处理服务已停止，处理被中断: {}", e.getMessage());
+            }
             return false;
         }
     }
@@ -187,5 +282,25 @@ public class EasyMailProcessor {
     public void setEasyMailProcessorFunction(EasyMailProcessorFunction processorFunction) {
         this.easyMailProcessorFunction = processorFunction;
         log.info("已设置函数式邮件处理器");
+    }
+    
+    /**
+     * 设置服务运行状态
+     * 由EasyMailService调用来通知处理器服务状态变化
+     *
+     * @param running 服务是否正在运行
+     */
+    public void setServiceRunning(boolean running) {
+        this.serviceRunning = running;
+        log.debug("邮件处理器服务状态更新: {}", running ? "运行中" : "已停止");
+    }
+    
+    /**
+     * 检查服务是否正在运行
+     *
+     * @return 服务运行状态
+     */
+    public boolean isServiceRunning() {
+        return serviceRunning;
     }
 }

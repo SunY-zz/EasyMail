@@ -109,23 +109,40 @@ public class EasyMailHandlerExecutor {
      * @param context     邮件上下文
      */
     private void executeHandlerAsync(EasyMailHandlerInfo handlerInfo, EasyMailContext context) {
-        CompletableFuture.runAsync(() -> {
-            long startTime = System.currentTimeMillis();
+        try {
+            CompletableFuture.runAsync(() -> {
+                // 检查线程是否被中断
+                if (Thread.currentThread().isInterrupted()) {
+                    log.debug("异步处理线程被中断，跳过处理器 [{}]", handlerInfo.getName());
+                    return;
+                }
+                
+                long startTime = System.currentTimeMillis();
 
-            try {
-                Object result = invokeHandler(handlerInfo, context);
+                try {
+                    Object result = invokeHandler(handlerInfo, context);
 
-                long duration = System.currentTimeMillis() - startTime;
-                log.debug("异步执行邮件处理器 [{}] 完成，耗时: {}ms，结果: {}",
-                        handlerInfo.getName(), duration, result);
+                    long duration = System.currentTimeMillis() - startTime;
+                    log.debug("异步执行邮件处理器 [{}] 完成，耗时: {}ms，结果: {}",
+                            handlerInfo.getName(), duration, result);
 
-            } catch (Exception e) {
-                long duration = System.currentTimeMillis() - startTime;
-                EasyMailProcessException processEx = EasyMailProcessException.processingError("异步执行邮件处理器失败", e);
-                log.error("异步执行邮件处理器 [{}] 失败，耗时: {}ms - {}",
-                        handlerInfo.getName(), duration, processEx.getFullErrorMessage(), processEx);
-            }
-        }, noticeThreadPool);
+                } catch (Exception e) {
+                    // 如果是中断异常，直接返回
+                    if (e instanceof InterruptedException || Thread.currentThread().isInterrupted()) {
+                        log.debug("异步处理器 [{}] 被中断", handlerInfo.getName());
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    
+                    long duration = System.currentTimeMillis() - startTime;
+                    EasyMailProcessException processEx = EasyMailProcessException.processingError("异步执行邮件处理器失败", e);
+                    log.error("异步执行邮件处理器 [{}] 失败，耗时: {}ms - {}",
+                            handlerInfo.getName(), duration, processEx.getFullErrorMessage(), processEx);
+                }
+            }, noticeThreadPool);
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            log.warn("线程池已满，无法异步执行处理器 [{}]: {}", handlerInfo.getName(), e.getMessage());
+        }
     }
 
     /**

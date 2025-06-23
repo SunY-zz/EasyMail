@@ -75,6 +75,10 @@ public class EasyMailService {
             // 尝试设置状态为运行中，如果有其他线程同时调用，只有一个会成功
             if (isMailServiceRunning.compareAndSet(false, true)) {
                 log.info("开始启动邮件监听服务");
+                
+                // 通知处理器服务正在启动
+                easyMailProcessor.setServiceRunning(true);
+                
                 easyMailListener.startListening(easyMailServerConnector);
 
                 // 检查是否真正启动成功
@@ -85,6 +89,7 @@ public class EasyMailService {
                     // 如果监听器没有成功运行，重置服务状态
                     log.warn("邮件监听服务未能成功启动，但已启动恢复线程");
                     isMailServiceRunning.set(false);
+                    easyMailProcessor.setServiceRunning(false);
                     return false;
                 }
             } else {
@@ -94,6 +99,7 @@ public class EasyMailService {
         } catch (Exception e) {
             // 启动失败，重置状态
             isMailServiceRunning.set(false);
+            easyMailProcessor.setServiceRunning(false);
             EasyMailException connectionEx = EasyMailExceptionHandler.wrapException(e, "启动邮件监听失败");
             log.error(connectionEx.getFullErrorMessage(), connectionEx);
             return false;
@@ -108,6 +114,10 @@ public class EasyMailService {
         if (isMailServiceRunning.get()) {
             try {
                 log.info("正在关闭邮件监听服务");
+                
+                // 先通知处理器停止处理新邮件
+                easyMailProcessor.setServiceRunning(false);
+                
                 easyMailListener.stopListening(easyMailServerConnector);
                 // 设置状态为未运行
                 isMailServiceRunning.set(false);
@@ -118,6 +128,8 @@ public class EasyMailService {
             }
         } else {
             log.info("邮件监听服务未运行，无需关闭");
+            // 确保处理器状态同步
+            easyMailProcessor.setServiceRunning(false);
         }
     }
 
