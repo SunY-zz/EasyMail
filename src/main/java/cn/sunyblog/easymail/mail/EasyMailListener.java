@@ -66,10 +66,6 @@ public class EasyMailListener {
                 store = serverConnector.connectToServer(session);
                 folder = serverConnector.openInbox(store);
 
-                // 处理现有未读邮件
-                log.debug("开始处理现有未读邮件");
-                processUnreadEmails();
-
                 // 设置新邮件监听器
                 setupMessageListener();
 
@@ -77,7 +73,7 @@ public class EasyMailListener {
                 log.debug("开始监听新邮件");
                 isRunning.set(true);
 
-                // 启动监听线程
+                // 启动监听线程（包含处理现有未读邮件的逻辑）
                 startMonitorThread(serverConnector);
 
                 // 启动保活线程
@@ -131,9 +127,8 @@ public class EasyMailListener {
                     store = serverConnector.connectToServer(session);
                     folder = serverConnector.openInbox(store);
 
-                    // 处理现有未读邮件
-                    log.debug("开始处理现有未读邮件");
-                    processUnreadEmails();
+                    // 根据配置策略处理现有未读邮件
+            processExistingUnreadEmails();
 
                     // 设置新邮件监听器
                     setupMessageListener();
@@ -192,6 +187,13 @@ public class EasyMailListener {
                     return;
                 }
                 
+                // 检查启动策略，如果是IGNORE_EXISTING则不处理任何邮件（包括新邮件）
+                EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
+                if (strategy == EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+                    log.debug("配置为IGNORE_EXISTING模式，跳过新邮件处理");
+                    return;
+                }
+                
                 processingEvent.set(true); // 设置标志位
                 try {
                     Message[] messages = e.getMessages();
@@ -232,9 +234,73 @@ public class EasyMailListener {
     }
 
     /**
-     * 处理未读邮件
+     * 根据配置策略处理现有未读邮件
      */
-    private void processUnreadEmails() {
+    private void processExistingUnreadEmails() {
+        EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
+        
+        // 如果策略是忽略现有邮件，直接返回
+        if (strategy == EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+            log.info("配置为忽略现有未读邮件，跳过处理");
+            return;
+        }
+        
+        log.debug("开始处理现有未读邮件，策略: {}", strategy);
+        
+        switch (strategy) {
+            case MARK_AS_READ_ONLY:
+                markUnreadEmailsAsRead();
+                break;
+            case FULL_PROCESS:
+                processUnreadEmailsWithContent();
+                break;
+            default:
+                log.warn("未知的启动处理策略: {}, 使用默认策略", strategy);
+                markUnreadEmailsAsRead();
+                break;
+        }
+    }
+    
+    /**
+     * 只标记未读邮件为已读，不处理内容
+     */
+    private void markUnreadEmailsAsRead() {
+        try {
+            long startTime = System.currentTimeMillis();
+            
+            // 查找未读邮件
+            FlagTerm ft = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
+            Message[] messages = folder.search(ft);
+            
+            if (messages.length == 0) {
+                log.info("没有未读邮件需要标记");
+                return;
+            }
+            
+            log.info("开始标记{}封未读邮件为已读", messages.length);
+            
+            // 批量标记为已读
+            for (Message message : messages) {
+                try {
+                    message.setFlag(Flags.Flag.SEEN, true);
+                } catch (Exception e) {
+                    log.warn("标记邮件为已读失败: {}", e.getMessage());
+                }
+            }
+            
+            long endTime = System.currentTimeMillis();
+            log.info("批量标记{}封邮件为已读完成，总耗时: {}毫秒", 
+                    messages.length, endTime - startTime);
+                    
+        } catch (Exception e) {
+            log.error("标记未读邮件为已读失败: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 完全处理未读邮件（包括内容解析和业务处理）
+     */
+    private void processUnreadEmailsWithContent() {
         try {
             long startTime = System.currentTimeMillis();
 
@@ -317,9 +383,13 @@ public class EasyMailListener {
     private void startMonitorThread(EasyMailServerConnector serverConnector) {
         monitorThread = new Thread(() -> {
             log.info("邮件监听线程已启动");
+            
+            // 根据配置策略处理现有未读邮件
+            processExistingUnreadEmails();
+            
             // 添加一个短暂延迟，避免与初始化时的事件检测冲突
             try {
-                TimeUnit.SECONDS.sleep(2);
+                TimeUnit.MILLISECONDS.sleep(500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -526,6 +596,13 @@ public class EasyMailListener {
         // 如果服务已停止运行，直接返回
         if (!isRunning.get()) {
             log.debug("邮件监听服务已停止，跳过邮件检查");
+            return;
+        }
+
+        // 检查启动策略，如果是IGNORE_EXISTING则不进行轮询检查
+        EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
+        if (strategy == EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+            log.debug("配置为IGNORE_EXISTING模式，跳过轮询检查");
             return;
         }
 

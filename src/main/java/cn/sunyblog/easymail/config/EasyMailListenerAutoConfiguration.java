@@ -9,7 +9,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 
 import java.util.concurrent.ExecutorService;
@@ -24,6 +27,9 @@ import java.util.concurrent.ExecutorService;
 @Import({EasyMailThreadPoolConfig.class, EasyMailSSLTrustInitializer.class})
 @Order(0) // 确保优先级高于MailConfigCompatibilityAutoConfiguration
 public class EasyMailListenerAutoConfiguration {
+    
+    @Autowired
+    private Environment environment;
 
     /**
      * 配置邮件缓存
@@ -178,7 +184,8 @@ public class EasyMailListenerAutoConfiguration {
 
         // 监听配置
         mailConfig.getListener().setMaxRetries(properties.getListener().getMaxRetries());
-        // 我们不直接设置processExistingUnread，因为MailConfig.Listener中没有这个setter方法
+        
+        mailConfig.getListener().setStartupProcessStrategy(properties.getListener().getStartupProcessStrategy());
 
         // 日志配置
         mailConfig.getLog().setDebugEnabled(properties.getLog().isDebugEnabled());
@@ -188,4 +195,6 @@ public class EasyMailListenerAutoConfiguration {
 
         return mailConfig;
     }
+    
+
 }

@@ -2,6 +2,7 @@ package cn.sunyblog.easymail.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import cn.sunyblog.easymail.config.EasyMailConfig.StartupProcessStrategy;
 
 /**
  * 邮件监听器配置属性
@@ -159,10 +160,10 @@ public class EasyMailListenerProperties {
         private boolean autoStart = true;
 
         /**
-         * 是否处理现有未读邮件
+         * 启动时处理策略
          */
-        private boolean processExistingUnread = true;
-
+        private StartupProcessStrategy startupProcessStrategy = StartupProcessStrategy.MARK_AS_READ_ONLY;
+        
         /**
          * 线程池核心线程数
          */

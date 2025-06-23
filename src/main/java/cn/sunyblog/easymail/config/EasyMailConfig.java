@@ -114,6 +114,31 @@ public class EasyMailConfig {
          * 最大重试次数，默认20次
          */
         private int maxRetries = 20;
+        
+        /**
+         * 启动时处理策略
+         */
+        private StartupProcessStrategy startupProcessStrategy = StartupProcessStrategy.MARK_AS_READ_ONLY;
+    }
+    
+    /**
+     * 启动时处理策略枚举
+     */
+    public enum StartupProcessStrategy {
+        /**
+         * 不处理旧邮件，只监听新邮件
+         */
+        IGNORE_EXISTING,
+        
+        /**
+         * 只标记旧邮件为已读，不处理内容
+         */
+        MARK_AS_READ_ONLY,
+        
+        /**
+         * 完全处理旧邮件（包括内容解析和业务处理）
+         */
+        FULL_PROCESS
     }
 
     /**

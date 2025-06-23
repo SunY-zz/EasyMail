@@ -173,6 +173,13 @@
       "defaultValue": 20
     },
     {
+      "name": "mail.imap.listener.startup-process-strategy",
+      "type": "java.lang.String",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Listener",
+      "description": "启动处理策略，可选值：MARK_AS_READ_ONLY、IGNORE_EXISTING、FULL_PROCESS",
+      "defaultValue": "MARK_AS_READ_ONLY"
+       },
+    {
       "name": "mail.imap.log.debug-enabled",
       "type": "java.lang.Boolean",
       "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Log",
@@ -439,6 +446,24 @@
           "value": "465",
           "description": "SMTP over SSL端口（加密）"
         }
+      ]
+    },
+    {
+      "name": "mail.imap.listener.startup-process-strategy",
+      "values": [
+        {
+          "value": "MARK_AS_READ_ONLY",
+          "description": "只标记旧邮件为已读，不处理内容"
+        },
+        {
+          "value": "IGNORE_EXISTING",
+          "description": "不处理旧邮件，只监听新邮件"
+        },
+        {
+          "value": "FULL_PROCESS",
+          "description": "完全处理旧邮件,并标记为已读（包括内容解析和业务处理)"
+        },
+
       ]
     }
   ]
