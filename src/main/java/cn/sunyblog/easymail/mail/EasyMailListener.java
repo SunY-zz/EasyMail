@@ -495,7 +495,10 @@ public class EasyMailListener {
                     // 只有在非认证失败的情况下才尝试重连
                     try {
                         // 尝试重新连接
-                        serverConnector.reconnectIfNeeded(store, folder);
+                        folder = serverConnector.reconnectIfNeeded(store, folder);
+                        // 重新设置监听器
+                        setupMessageListener();
+                        log.info("邮件服务器重连成功，已重新设置监听器");
                         TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getReconnectDelay());
                     } catch (Exception reconnectEx) {
                         // 检查重连异常是否也是认证失败
@@ -547,7 +550,9 @@ public class EasyMailListener {
                         folder.getMessageCount();
                         log.debug("发送保活信号");
                     } else {
-                        log.debug("邮件连接已断开，等待主线程重连");
+                        log.warn("保活线程检测到连接断开，等待主线程重连");
+                        // 保活线程不直接重连，避免与主线程冲突
+                        // 这里只是记录状态，让主监听线程处理重连
                     }
                     TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getKeepAliveInterval());
                 } catch (InterruptedException e) {

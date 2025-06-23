@@ -282,10 +282,11 @@ public class EasyMailServerConnector {
      * 重新连接邮件服务器（如果需要）
      *
      * @param store  邮件存储对象
-     * @param folder 邮件文件夹
+     * @param folder 邮件文件夹对象
+     * @return 重新连接后的文件夹对象
      * @throws MessagingException 如果重连失败
      */
-    public void reconnectIfNeeded(Store store, Folder folder) throws MessagingException {
+    public Folder reconnectIfNeeded(Store store, Folder folder) throws MessagingException {
         if (store == null || !store.isConnected()) {
             log.debug("尝试重新连接到邮件服务器");
             assert store != null;
@@ -299,5 +300,7 @@ public class EasyMailServerConnector {
             folder.open(Folder.READ_WRITE);
             log.debug("收件箱重新打开成功");
         }
+        
+        return folder;
     }
 }
