@@ -1,7 +1,7 @@
 //package cn.sunyblog.easymail.example;
 //
 //
-//import cn.sunyblog.easymail.mail.MailProcessor;
+//import cn.sunyblog.easymail.processor.annotation.EasyMailProcessor;
 //import lombok.extern.slf4j.Slf4j;
 //import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.stereotype.Component;
@@ -20,17 +20,7 @@
 //public class FunctionalEmailProcessorExample {
 //
 //    @Autowired
-//    private MailProcessor mailProcessor;
-//
-//    /**
-//     * 初始化方法，设置函数式邮件处理器
-//     */
-//    @PostConstruct
-//    public void init() {
-//        // 使用lambda表达式设置邮件处理函数
-//        mailProcessor.setEasyMailProcessorFunction(this::processVerificationEmail);
-//        log.info("函数式邮件处理器已注册");
-//    }
+//    private EasyMailProcessor easyMailProcessor;
 //
 //    /**
 //     * 验证码邮件处理函数
