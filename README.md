@@ -17,9 +17,10 @@ EasyMail 是一个基于 Spring Boot 的应用级邮件服务框架，提供了�
 - **监控统计**：完整的发送监控和统计功能
 
 ### 📨 邮件监听服务
-- **实时监听**：基于 IMAP IDLE 的实时邮件监听
+- **实时监听**：基于 IMAP IDLE 的实时邮件监听（如果邮箱提供商支持，
+但大部分邮箱服务商不支持IMAP IDLE模式，所有大部分情况使用轮询方式监听新邮件）
 - **自动处理**：支持自定义邮件处理器
-- **注解驱动**：基于 `@EasyMailProcessor` 和 `@EasyMailProcessorHandler` 的邮件处理器配置
+- **注解驱动**：基于 `@EasyMailProcessor` 和 `@EasyMailProcessorHandler` 注解形式的邮件处理方式
 - **智能路由**：支持基于主题、发件人、标签等条件的邮件路由
 - **上下文处理**：提供丰富的 `EasyMailContext` 邮件上下文信息
 - **缓存机制**：避免重复处理同一邮件
@@ -208,19 +209,17 @@ easymail/
 └── util/               # 工具类
 ```
 
-## 许可证
-
-本项目采用 MIT 许可证，详情请参阅 [LICENSE](LICENSE) 文件。
 
 ## 贡献
+个人能力有限，如有错误请见谅并诚恳希望能向我提出错误。持续更新中~
 
 欢迎提交 Issue 和 Pull Request 来帮助改进这个项目。
 
 ## 联系方式
 
-- 作者：sunyblog
-- 邮箱：your-email@example.com
-- GitHub：https://github.com/sunyblog/easymail
+- 作者：suny
+- 邮箱：3379652824@qq.com
+- 博客：https://www.sunyblog.cn/
 
 ---
 
