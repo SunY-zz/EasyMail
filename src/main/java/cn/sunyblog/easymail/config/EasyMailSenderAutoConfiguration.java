@@ -47,9 +47,6 @@ public class EasyMailSenderAutoConfiguration {
     @Resource
     private EasyMailRetryConfig easyMailRetryConfig;
 
-    @Resource
-    private ApplicationEventPublisher eventPublisher;
-
     @PostConstruct
     public void init() {
         log.info("EmailSender 自动配置已启用");
@@ -64,7 +61,7 @@ public class EasyMailSenderAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public EasyMailSendTemplateManager emailTemplateManager() {
+    public EasyMailSendTemplateManager easyMailSendTemplateManager() {
         EasyMailSendTemplateManager manager = new EasyMailSendTemplateManager();
         log.info("EmailTemplateManager 已创建");
         return manager;
@@ -75,7 +72,7 @@ public class EasyMailSenderAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public EasyMailSendMonitor emailSendMonitor() {
+    public EasyMailSendMonitor easyMailSendMonitor() {
         EasyMailSendMonitor monitor = new EasyMailSendMonitor();
         log.info("EmailSendMonitor 已创建");
         return monitor;
@@ -86,7 +83,7 @@ public class EasyMailSenderAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public EasyMailSendEventListener emailSendEventListener() {
+    public EasyMailSendEventListener easyMailSendEventListener() {
         return new EasyMailSendEventListener();
     }
 
@@ -94,8 +91,8 @@ public class EasyMailSenderAutoConfiguration {
      * 默认邮件发送策略
      */
     @Bean
-    @ConditionalOnMissingBean(name = "defaultEmailSendStrategy")
-    public DefaultEasyMailSendStrategy defaultEmailSendStrategy() {
+    @ConditionalOnMissingBean
+    public DefaultEasyMailSendStrategy defaultEasyMailSendStrategy() {
         DefaultEasyMailSendStrategy strategy = new DefaultEasyMailSendStrategy();
         log.info("DefaultEmailSendStrategy 已创建");
         return strategy;
@@ -105,8 +102,8 @@ public class EasyMailSenderAutoConfiguration {
      * 批量邮件发送策略
      */
     @Bean
-    @ConditionalOnMissingBean(name = "batchEmailSendStrategy")
-    public BatchEasyMailSendStrategy batchEmailSendStrategy() {
+    @ConditionalOnMissingBean
+    public BatchEasyMailSendStrategy batchEasyMailSendStrategy() {
         BatchEasyMailSendStrategy strategy = new BatchEasyMailSendStrategy();
         log.info("BatchEmailSendStrategy 已创建");
         return strategy;
@@ -116,8 +113,8 @@ public class EasyMailSenderAutoConfiguration {
      * 高优先级邮件发送策略
      */
     @Bean
-    @ConditionalOnMissingBean(name = "highPriorityEmailSendStrategy")
-    public HighPriorityEasyMailSendStrategy highPriorityEmailSendStrategy() {
+    @ConditionalOnMissingBean
+    public HighPriorityEasyMailSendStrategy highPriorityEasyMailSendStrategy() {
         HighPriorityEasyMailSendStrategy strategy = new HighPriorityEasyMailSendStrategy();
         log.info("HighPriorityEmailSendStrategy 已创建");
         return strategy;
@@ -128,14 +125,14 @@ public class EasyMailSenderAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public EasyMailSendStrategyManager emailSendStrategyManager() {
+    public EasyMailSendStrategyManager easyMailSendStrategyManager() {
         return new EasyMailSendStrategyManager();
     }
 
     /**
      * 邮件发送服务实现
      */
-    @Bean
+    @Bean(name = {"emailSenderService", "easyMailSenderService", "mailSenderService"})
     @ConditionalOnMissingBean
     public EasyMailSenderService emailSenderService() {
         EasyMailSenderServiceImpl service = new EasyMailSenderServiceImpl();
