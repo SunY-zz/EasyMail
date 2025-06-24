@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.Singular;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -34,8 +35,13 @@ public class EasyMailRequest {
     /**
      * 收件人列表（TO）
      */
-    @Singular("to")
+    @Singular("toList")
     private List<String> toList;
+
+    /**
+     * 单个收件人（便捷字段，会自动转换为toList）
+     */
+    private String to;
 
     /**
      * 抄送人列表（CC）
@@ -112,12 +118,15 @@ public class EasyMailRequest {
     public ValidationResult validate() {
         ValidationResult result = new ValidationResult();
 
+        // 处理单个收件人字段
+        List<String> actualToList = getActualToList();
+
         // 检查收件人
-        if (toList == null || toList.isEmpty()) {
+        if (actualToList == null || actualToList.isEmpty()) {
             result.addError("收件人列表不能为空");
         } else {
             // 验证收件人邮箱格式
-            for (String email : toList) {
+            for (String email : actualToList) {
                 if (!isValidEmail(email)) {
                     result.addError("收件人邮箱格式无效: " + email);
                 }
@@ -306,5 +315,114 @@ public class EasyMailRequest {
                 .templateId(templateId)
                 .templateVariables(variables)
                 .build();
+    }
+
+    /**
+     * 获取实际的收件人列表（处理单个收件人字段）
+     *
+     * @return 实际的收件人列表
+     */
+    public List<String> getActualToList() {
+        if (toList != null && !toList.isEmpty()) {
+            return toList;
+        }
+        if (to != null && !to.trim().isEmpty()) {
+            return Collections.singletonList(to);
+        }
+        return toList;
+    }
+
+    /**
+     * 便捷方法：创建带附件的邮件
+     *
+     * @param to          收件人
+     * @param subject     主题
+     * @param content     内容
+     * @param isHtml      是否为HTML
+     * @param attachments 附件列表
+     * @return EmailRequest实例
+     */
+    public static EasyMailRequest withAttachments(String to, String subject, String content, boolean isHtml, List<File> attachments) {
+        EasyMailRequestBuilder builder = EasyMailRequest.builder()
+                .to(to)
+                .subject(subject);
+        
+        if (isHtml) {
+            builder.html(content);
+        } else {
+            builder.text(content);
+        }
+        
+        if (attachments != null) {
+            attachments.forEach(builder::attachment);
+        }
+        
+        return builder.build();
+    }
+
+    /**
+     * 便捷方法：创建多收件人邮件
+     *
+     * @param toList  收件人列表
+     * @param subject 主题
+     * @param content 内容
+     * @param isHtml  是否为HTML
+     * @return EmailRequest实例
+     */
+    public static EasyMailRequest toMultiple(List<String> toList, String subject, String content, boolean isHtml) {
+        EasyMailRequestBuilder builder = EasyMailRequest.builder()
+                .subject(subject);
+        
+        if (toList != null) {
+            toList.forEach(builder::to);
+        }
+        
+        if (isHtml) {
+            builder.html(content);
+        } else {
+            builder.text(content);
+        }
+        
+        return builder.build();
+    }
+
+    /**
+     * 便捷方法：创建完整邮件（支持TO、CC、BCC）
+     *
+     * @param toList      收件人列表
+     * @param ccList      抄送人列表
+     * @param bccList     密送人列表
+     * @param subject     主题
+     * @param content     内容
+     * @param isHtml      是否为HTML
+     * @param attachments 附件列表
+     * @return EmailRequest实例
+     */
+    public static EasyMailRequest fullEmail(List<String> toList, List<String> ccList, List<String> bccList,
+                                           String subject, String content, boolean isHtml, List<File> attachments) {
+        EasyMailRequestBuilder builder = EasyMailRequest.builder()
+                .subject(subject);
+        
+        if (toList != null) {
+            toList.forEach(builder::to);
+        }
+        if (ccList != null) {
+            ccList.forEach(builder::cc);
+        }
+        if (bccList != null) {
+            bccList.forEach(builder::bcc);
+        }
+        
+        if (isHtml) {
+            builder.html(content);
+        } else {
+            builder.text(content);
+        }
+        
+        if (attachments != null) {
+            attachments.forEach(builder::attachment);
+        }
+        
+        return builder.build();
     }
 }

@@ -2,8 +2,10 @@ package cn.sunyblog.easymail.api;
 
 import cn.sunyblog.easymail.send.template.EasyMailSendTemplate;
 import cn.sunyblog.easymail.send.EasyMailSendResult;
+import cn.sunyblog.easymail.send.schedule.EasyMailScheduledTask;
 
 import java.io.File;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -37,73 +39,31 @@ public interface EasyMailSenderService {
      */
     CompletableFuture<EasyMailSendResult> sendAsync(EasyMailRequest request);
 
-    // ==================== 基础发送方法 ====================
+    // ==================== 便捷发送方法（基于EasyMailRequest的简化API） ====================
 
     /**
-     * 发送简单文本邮件
+     * 发送简单文本邮件（便捷方法）
      *
      * @param to      收件人邮箱
      * @param subject 邮件主题
      * @param content 邮件内容
      * @return 发送结果
      */
-    EasyMailSendResult sendText(String to, String subject, String content);
+    default EasyMailSendResult sendText(String to, String subject, String content) {
+        return send(EasyMailRequest.simpleText(to, subject, content));
+    }
 
     /**
-     * 发送HTML格式邮件
+     * 发送HTML格式邮件（便捷方法）
      *
      * @param to          收件人邮箱
      * @param subject     邮件主题
      * @param htmlContent HTML格式的邮件内容
      * @return 发送结果
      */
-    EasyMailSendResult sendHtml(String to, String subject, String htmlContent);
-
-    /**
-     * 发送带附件的邮件
-     *
-     * @param to          收件人邮箱
-     * @param subject     邮件主题
-     * @param content     邮件内容
-     * @param isHtml      是否为HTML格式
-     * @param attachments 附件列表
-     * @return 发送结果
-     */
-    EasyMailSendResult sendWithAttachments(String to, String subject, String content, boolean isHtml, List<File> attachments);
-
-    // ==================== 多收件人发送方法 ====================
-
-    EasyMailSendResult send(List<String> toList, String subject, String content);
-
-    EasyMailSendResult send(List<String> toList, String subject, String content, boolean isHtml);
-
-    EasyMailSendResult send(List<String> toList, String subject, String content, List<File> attachments);
-
-    /**
-     * 发送邮件给多个收件人（TO）
-     *
-     * @param toList  收件人列表
-     * @param subject 邮件主题
-     * @param content 邮件内容
-     * @param isHtml  是否为HTML格式
-     * @return 发送结果
-     */
-    EasyMailSendResult sendToMultiple(List<String> toList, String subject, String content, boolean isHtml);
-
-    /**
-     * 发送邮件（支持TO、CC、BCC）
-     *
-     * @param toList      收件人列表
-     * @param ccList      抄送人列表
-     * @param bccList     密送人列表
-     * @param subject     邮件主题
-     * @param content     邮件内容
-     * @param isHtml      是否为HTML格式
-     * @param attachments 附件列表
-     * @return 发送结果
-     */
-    EasyMailSendResult send(List<String> toList, List<String> ccList, List<String> bccList,
-                            String subject, String content, boolean isHtml, List<File> attachments);
+    default EasyMailSendResult sendHtml(String to, String subject, String htmlContent) {
+        return send(EasyMailRequest.htmlEmail(to, subject, htmlContent));
+    }
 
     // ==================== 模板邮件发送方法 ====================
 
@@ -126,55 +86,48 @@ public interface EasyMailSenderService {
      */
     EasyMailSendResult sendBatchWithTemplate(Map<String, Map<String, Object>> recipients, EasyMailSendTemplate template) throws Exception;
 
-    // ==================== 异步发送方法 ====================
+    // ==================== 异步发送方法（基于EasyMailRequest的简化API） ====================
 
     /**
-     * 异步发送简单文本邮件
+     * 异步发送简单文本邮件（便捷方法）
      *
      * @param to      收件人邮箱
      * @param subject 邮件主题
      * @param content 邮件内容
      * @return 异步发送结果
      */
-    CompletableFuture<EasyMailSendResult> sendTextAsync(String to, String subject, String content);
+    default CompletableFuture<EasyMailSendResult> sendTextAsync(String to, String subject, String content) {
+        return sendAsync(EasyMailRequest.simpleText(to, subject, content));
+    }
 
     /**
-     * 异步发送HTML格式邮件
+     * 异步发送HTML格式邮件（便捷方法）
      *
      * @param to          收件人邮箱
      * @param subject     邮件主题
      * @param htmlContent HTML格式的邮件内容
      * @return 异步发送结果
      */
-    CompletableFuture<EasyMailSendResult> sendHtmlAsync(String to, String subject, String htmlContent);
+    default CompletableFuture<EasyMailSendResult> sendHtmlAsync(String to, String subject, String htmlContent) {
+        return sendAsync(EasyMailRequest.htmlEmail(to, subject, htmlContent));
+    }
 
     /**
-     * 异步发送邮件（完整参数）
+     * 批量发送邮件（便捷方法）
      *
-     * @param toList      收件人列表
-     * @param ccList      抄送人列表
-     * @param bccList     密送人列表
-     * @param subject     邮件主题
-     * @param content     邮件内容
-     * @param isHtml      是否为HTML格式
-     * @param attachments 附件列表
-     * @return 异步发送结果
+     * @param requests 邮件请求列表
+     * @return 批量发送结果
      */
-    CompletableFuture<EasyMailSendResult> sendAsync(List<String> toList, List<String> ccList, List<String> bccList,
-                                                    String subject, String content, boolean isHtml, List<File> attachments);
+    List<EasyMailSendResult> sendBatch(List<EasyMailRequest> requests);
 
     /**
      * 异步批量发送邮件
      *
-     * @param toList   收件人列表
-     * @param subject  邮件主题
-     * @param content  邮件内容
-     * @param isHtml   是否为HTML格式
+     * @param requests 邮件请求列表
      * @param callback 发送完成回调（参数为成功发送的数量）
      * @return 异步发送结果
      */
-    CompletableFuture<EasyMailSendResult> sendBatchAsync(List<String> toList, String subject, String content,
-                                                         boolean isHtml, Consumer<Integer> callback);
+    CompletableFuture<List<EasyMailSendResult>> sendBatchAsync(List<EasyMailRequest> requests, Consumer<Integer> callback);
 
     // ==================== 状态查询方法 ====================
 
@@ -238,4 +191,240 @@ public interface EasyMailSenderService {
      * 重置统计信息
      */
     void resetStatistics();
+
+    // ==================== 定时发送方法 ====================
+
+    /**
+     * 使用Cron表达式定时发送邮件
+     *
+     * @param request        邮件请求对象
+     * @param cronExpression Cron表达式
+     * @return 定时任务ID
+     */
+    String sendScheduled(EasyMailRequest request, String cronExpression);
+
+    /**
+     * 使用Cron表达式定时发送邮件（带任务名称）
+     *
+     * @param request        邮件请求对象
+     * @param cronExpression Cron表达式
+     * @param taskName       任务名称
+     * @return 定时任务ID
+     */
+    String sendScheduled(EasyMailRequest request, String cronExpression, String taskName);
+
+    /**
+     * 延迟发送邮件
+     *
+     * @param request      邮件请求对象
+     * @param delayMillis  延迟时间（毫秒）
+     * @return 定时任务ID
+     */
+    String sendDelayed(EasyMailRequest request, long delayMillis);
+
+    /**
+     * 延迟发送邮件（带任务名称）
+     *
+     * @param request      邮件请求对象
+     * @param delayMillis  延迟时间（毫秒）
+     * @param taskName     任务名称
+     * @return 定时任务ID
+     */
+    String sendDelayed(EasyMailRequest request, long delayMillis, String taskName);
+
+    /**
+     * 固定频率发送邮件
+     *
+     * @param request           邮件请求对象
+     * @param fixedRateMillis   固定频率时间（毫秒）
+     * @return 定时任务ID
+     */
+    String sendAtFixedRate(EasyMailRequest request, long fixedRateMillis);
+
+    /**
+     * 固定频率发送邮件（带任务名称）
+     *
+     * @param request           邮件请求对象
+     * @param fixedRateMillis   固定频率时间（毫秒）
+     * @param taskName          任务名称
+     * @return 定时任务ID
+     */
+    String sendAtFixedRate(EasyMailRequest request, long fixedRateMillis, String taskName);
+
+    /**
+     * 固定延迟发送邮件
+     *
+     * @param request            邮件请求对象
+     * @param fixedDelayMillis   固定延迟时间（毫秒）
+     * @return 定时任务ID
+     */
+    String sendWithFixedDelay(EasyMailRequest request, long fixedDelayMillis);
+
+    /**
+     * 固定延迟发送邮件（带任务名称）
+     *
+     * @param request            邮件请求对象
+     * @param fixedDelayMillis   固定延迟时间（毫秒）
+     * @param taskName           任务名称
+     * @return 定时任务ID
+     */
+    String sendWithFixedDelay(EasyMailRequest request, long fixedDelayMillis, String taskName);
+
+    /**
+     * 在指定时间发送邮件
+     *
+     * @param request     邮件请求对象
+     * @param executeTime 执行时间
+     * @return 定时任务ID
+     */
+    String sendAtTime(EasyMailRequest request, LocalDateTime executeTime);
+
+    /**
+     * 在指定时间发送邮件（带任务名称）
+     *
+     * @param request     邮件请求对象
+     * @param executeTime 执行时间
+     * @param taskName    任务名称
+     * @return 定时任务ID
+     */
+    String sendAtTime(EasyMailRequest request, LocalDateTime executeTime, String taskName);
+
+    // ==================== 批量定时发送方法 ====================
+
+    /**
+     * 批量定时发送邮件（Cron表达式）
+     *
+     * @param requests       邮件请求列表
+     * @param cronExpression Cron表达式
+     * @return 定时任务ID
+     */
+    String sendBatchScheduled(List<EasyMailRequest> requests, String cronExpression);
+
+    /**
+     * 批量定时发送邮件（Cron表达式，带任务名称）
+     *
+     * @param requests       邮件请求列表
+     * @param cronExpression Cron表达式
+     * @param taskName       任务名称
+     * @return 定时任务ID
+     */
+    String sendBatchScheduled(List<EasyMailRequest> requests, String cronExpression, String taskName);
+
+    /**
+     * 批量延迟发送邮件
+     *
+     * @param requests    邮件请求列表
+     * @param delayMillis 延迟时间（毫秒）
+     * @return 定时任务ID
+     */
+    String sendBatchDelayed(List<EasyMailRequest> requests, long delayMillis);
+
+    /**
+     * 批量延迟发送邮件（带任务名称）
+     *
+     * @param requests    邮件请求列表
+     * @param delayMillis 延迟时间（毫秒）
+     * @param taskName    任务名称
+     * @return 定时任务ID
+     */
+    String sendBatchDelayed(List<EasyMailRequest> requests, long delayMillis, String taskName);
+
+    /**
+     * 批量在指定时间发送邮件
+     *
+     * @param requests    邮件请求列表
+     * @param executeTime 执行时间
+     * @return 定时任务ID
+     */
+    String sendBatchAtTime(List<EasyMailRequest> requests, LocalDateTime executeTime);
+
+    /**
+     * 批量在指定时间发送邮件（带任务名称）
+     *
+     * @param requests    邮件请求列表
+     * @param executeTime 执行时间
+     * @param taskName    任务名称
+     * @return 定时任务ID
+     */
+    String sendBatchAtTime(List<EasyMailRequest> requests, LocalDateTime executeTime, String taskName);
+
+    // ==================== 定时任务管理方法 ====================
+
+    /**
+     * 取消定时任务
+     *
+     * @param taskId 任务ID
+     * @return 是否成功取消
+     */
+    boolean cancelScheduledTask(String taskId);
+
+    /**
+     * 删除定时任务
+     *
+     * @param taskId 任务ID
+     * @return 是否成功删除
+     */
+    boolean removeScheduledTask(String taskId);
+
+    /**
+     * 获取定时任务
+     *
+     * @param taskId 任务ID
+     * @return 定时任务
+     */
+    EasyMailScheduledTask getScheduledTask(String taskId);
+
+    /**
+     * 获取所有定时任务
+     *
+     * @return 所有定时任务列表
+     */
+    List<EasyMailScheduledTask> getAllScheduledTasks();
+
+    /**
+     * 根据状态获取定时任务
+     *
+     * @param status 任务状态
+     * @return 任务列表
+     */
+    List<EasyMailScheduledTask> getScheduledTasksByStatus(EasyMailScheduledTask.TaskStatus status);
+
+    /**
+     * 获取运行中的定时任务
+     *
+     * @return 运行中的任务列表
+     */
+    List<EasyMailScheduledTask> getRunningScheduledTasks();
+
+    /**
+     * 取消所有定时任务
+     */
+    void cancelAllScheduledTasks();
+
+    /**
+     * 清理已完成的定时任务
+     */
+    void cleanupCompletedScheduledTasks();
+
+    /**
+     * 获取定时任务统计信息
+     *
+     * @return 统计信息
+     */
+    Map<String, Object> getScheduledTaskStatistics();
+
+    /**
+     * 检查定时任务是否存在
+     *
+     * @param taskId 任务ID
+     * @return 是否存在
+     */
+    boolean scheduledTaskExists(String taskId);
+
+    /**
+     * 获取定时任务数量
+     *
+     * @return 任务数量
+     */
+    int getScheduledTaskCount();
 }
