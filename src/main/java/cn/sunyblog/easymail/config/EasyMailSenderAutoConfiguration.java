@@ -9,6 +9,8 @@ import cn.sunyblog.easymail.send.strategy.BatchEasyMailSendStrategy;
 import cn.sunyblog.easymail.send.strategy.DefaultEasyMailSendStrategy;
 import cn.sunyblog.easymail.send.strategy.EasyMailSendStrategyManager;
 import cn.sunyblog.easymail.send.strategy.HighPriorityEasyMailSendStrategy;
+import cn.sunyblog.easymail.send.schedule.EasyMailScheduleManager;
+import cn.sunyblog.easymail.send.schedule.EasyMailTaskScheduler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,6 +19,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
@@ -30,6 +35,7 @@ import javax.annotation.Resource;
  */
 @Slf4j
 @Configuration
+@EnableScheduling
 @EnableConfigurationProperties({EasyMailSmtpConfig.class, EasyMailRetryConfig.class})
 @ConditionalOnProperty(prefix = "email.sender", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Import({EasyMailThreadPoolConfig.class})
@@ -135,5 +141,44 @@ public class EasyMailSenderAutoConfiguration {
         EasyMailSenderServiceImpl service = new EasyMailSenderServiceImpl();
         log.info("EmailSenderService 已创建");
         return service;
+    }
+
+    /**
+     * 定时任务调度器
+     */
+    @Bean
+    @Primary
+    @ConditionalOnMissingBean
+    public ThreadPoolTaskScheduler threadPoolTaskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(5);
+        scheduler.setThreadNamePrefix("EasyMail-Schedule-");
+        scheduler.setWaitForTasksToCompleteOnShutdown(true);
+        scheduler.setAwaitTerminationSeconds(60);
+        scheduler.initialize();
+        log.info("EasyMail定时任务调度器已创建，线程池大小: 5");
+        return scheduler;
+    }
+
+    /**
+     * 邮件任务调度器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public EasyMailTaskScheduler easyMailTaskScheduler(ThreadPoolTaskScheduler threadPoolTaskScheduler) {
+        EasyMailTaskScheduler taskScheduler = new EasyMailTaskScheduler();
+        taskScheduler.setTaskScheduler(threadPoolTaskScheduler);
+        log.info("EasyMailTaskScheduler 已创建");
+        return taskScheduler;
+    }
+
+    /**
+     * 邮件定时任务管理器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public EasyMailScheduleManager easyMailScheduleManager() {
+        log.info("EasyMailScheduleManager 已创建");
+        return new EasyMailScheduleManager();
     }
 }

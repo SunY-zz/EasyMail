@@ -12,6 +12,8 @@ import cn.sunyblog.easymail.send.template.EasyMailSendTemplateManager;
 import cn.sunyblog.easymail.send.event.EasyMailSendEventListener;
 import cn.sunyblog.easymail.send.monitor.EasyMailSendMonitor;
 import cn.sunyblog.easymail.send.strategy.EasyMailSendStrategyManager;
+import cn.sunyblog.easymail.send.schedule.EasyMailScheduleManager;
+import cn.sunyblog.easymail.send.schedule.EasyMailScheduledTask;
 import cn.sunyblog.easymail.util.EasyMailRetryUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,6 +24,7 @@ import javax.mail.*;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -61,6 +64,9 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
     @Resource
     private ApplicationEventPublisher eventPublisher;
 
+    @Resource
+    private EasyMailScheduleManager scheduleManager;
+
     // 统计信息
     private final AtomicLong totalSentCount = new AtomicLong(0);
     private final AtomicLong totalFailedCount = new AtomicLong(0);
@@ -88,7 +94,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
                     String subject = template.generateSubject(request.getTemplateVariables());
                     String content = template.generateContent(request.getTemplateVariables());
 
-                    return send(request.getToList(), request.getCcList(), request.getBccList(),
+                    return sendInternal(request.getActualToList(), request.getCcList(), request.getBccList(),
                             subject, content, template.isHtml(),
                             mergeAttachments(request.getAttachments(), template.getDefaultAttachments()));
                 } catch (Exception e) {
@@ -97,7 +103,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
             }
 
             // 普通邮件
-            return send(request.getToList(), request.getCcList(), request.getBccList(),
+            return sendInternal(request.getActualToList(), request.getCcList(), request.getBccList(),
                     request.getSubject(), request.getContent(), request.isHtml(),
                     request.getAttachments());
 
@@ -140,47 +146,35 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
         return merged.isEmpty() ? null : merged;
     }
 
-    // ==================== 基础发送方法 ====================
+    // ==================== 批量发送方法 ====================
 
     @Override
-    public EasyMailSendResult sendText(String to, String subject, String content) {
-        return send(Collections.singletonList(to), null, null, subject, content, false, null);
+    public List<EasyMailSendResult> sendBatch(List<EasyMailRequest> requests) {
+        List<EasyMailSendResult> results = new ArrayList<>();
+        for (EasyMailRequest request : requests) {
+            results.add(send(request));
+        }
+        return results;
     }
 
     @Override
-    public EasyMailSendResult sendHtml(String to, String subject, String htmlContent) {
-        return send(Collections.singletonList(to), null, null, subject, htmlContent, true, null);
+    public CompletableFuture<List<EasyMailSendResult>> sendBatchAsync(List<EasyMailRequest> requests, Consumer<Integer> callback) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<EasyMailSendResult> results = sendBatch(requests);
+            if (callback != null) {
+                int successCount = (int) results.stream().mapToInt(r -> r.isSuccess() ? 1 : 0).sum();
+                callback.accept(successCount);
+            }
+            return results;
+        }, executor);
     }
 
-    @Override
-    public EasyMailSendResult sendWithAttachments(String to, String subject, String content, boolean isHtml, List<File> attachments) {
-        return send(Collections.singletonList(to), null, null, subject, content, isHtml, attachments);
-    }
+    // ==================== 核心发送方法 ====================
 
-    // ==================== 多收件人发送方法 ====================
-
-    @Override
-    public EasyMailSendResult send(List<String> toList, String subject, String content) {
-        return send(toList, null, null, subject, content, false, null);
-    }
-
-    @Override
-    public EasyMailSendResult send(List<String> toList, String subject, String content, boolean isHtml) {
-        return send(toList, null, null, subject, content, isHtml, null);
-    }
-
-    @Override
-    public EasyMailSendResult send(List<String> toList, String subject, String content, List<File> attachments) {
-        return send(toList, null, null, subject, content, false, attachments);
-    }
-
-    @Override
-    public EasyMailSendResult sendToMultiple(List<String> toList, String subject, String content, boolean isHtml) {
-        return send(toList, null, null, subject, content, isHtml, null);
-    }
-
-    @Override
-    public EasyMailSendResult send(List<String> toList, List<String> ccList, List<String> bccList,
+    /**
+     * 内部发送方法（核心实现）
+     */
+    private EasyMailSendResult sendInternal(List<String> toList, List<String> ccList, List<String> bccList,
                                    String subject, String content, boolean isHtml, List<File> attachments) {
         long startTime = System.currentTimeMillis();
 
@@ -300,7 +294,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
         String subject = template.generateSubject(variables);
         String content = template.generateContent(variables);
 
-        return send(Collections.singletonList(to), null, null, subject, content, template.isHtml(), template.getDefaultAttachments());
+        return sendInternal(Collections.singletonList(to), null, null, subject, content, template.isHtml(), template.getDefaultAttachments());
     }
 
     @Override
@@ -320,7 +314,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
                 String subject = template.generateSubject(variables);
                 String content = template.generateContent(variables);
 
-                EasyMailSendResult result = send(Collections.singletonList(to), null, null, subject, content,
+                EasyMailSendResult result = sendInternal(Collections.singletonList(to), null, null, subject, content,
                         template.isHtml(), template.getDefaultAttachments());
                 batchResults.put(to, result.isSuccess());
 
@@ -334,35 +328,36 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
         return EasyMailSendResult.batchResult(batchResults, "批量模板邮件", duration);
     }
 
-    // ==================== 异步发送方法 ====================
+    // ==================== 批量定时发送方法实现 ====================
 
     @Override
-    public CompletableFuture<EasyMailSendResult> sendTextAsync(String to, String subject, String content) {
-        return CompletableFuture.supplyAsync(() -> sendText(to, subject, content), executor);
+    public String sendBatchScheduled(List<EasyMailRequest> requests, String cronExpression) {
+        return sendBatchScheduled(requests, cronExpression, "BatchScheduledTask-" + System.currentTimeMillis());
     }
 
     @Override
-    public CompletableFuture<EasyMailSendResult> sendHtmlAsync(String to, String subject, String htmlContent) {
-        return CompletableFuture.supplyAsync(() -> sendHtml(to, subject, htmlContent), executor);
+    public String sendBatchScheduled(List<EasyMailRequest> requests, String cronExpression, String taskName) {
+        return scheduleManager.createBatchScheduledTask(requests, cronExpression, taskName);
     }
 
     @Override
-    public CompletableFuture<EasyMailSendResult> sendAsync(List<String> toList, List<String> ccList, List<String> bccList,
-                                                           String subject, String content, boolean isHtml, List<File> attachments) {
-        return CompletableFuture.supplyAsync(() ->
-                send(toList, ccList, bccList, subject, content, isHtml, attachments), executor);
+    public String sendBatchDelayed(List<EasyMailRequest> requests, long delayMillis) {
+        return sendBatchDelayed(requests, delayMillis, "BatchDelayedTask-" + System.currentTimeMillis());
     }
 
     @Override
-    public CompletableFuture<EasyMailSendResult> sendBatchAsync(List<String> toList, String subject, String content,
-                                                                boolean isHtml, Consumer<Integer> callback) {
-        return CompletableFuture.supplyAsync(() -> {
-            EasyMailSendResult result = sendToMultiple(toList, subject, content, isHtml);
-            if (callback != null) {
-                callback.accept(result.getSuccessCount());
-            }
-            return result;
-        }, executor);
+    public String sendBatchDelayed(List<EasyMailRequest> requests, long delayMillis, String taskName) {
+        return scheduleManager.createBatchDelayedTask(requests, delayMillis, taskName);
+    }
+
+    @Override
+    public String sendBatchAtTime(List<EasyMailRequest> requests, LocalDateTime executeTime) {
+        return sendBatchAtTime(requests, executeTime, "BatchAtTimeTask-" + System.currentTimeMillis());
+    }
+
+    @Override
+    public String sendBatchAtTime(List<EasyMailRequest> requests, LocalDateTime executeTime, String taskName) {
+        return scheduleManager.createBatchAtTimeTask(requests, executeTime, taskName);
     }
 
     // ==================== 状态查询方法 ====================
@@ -583,5 +578,149 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);
         return sw.toString();
+    }
+
+    // ==================== 定时发送方法实现 ====================
+
+    @Override
+    public String sendScheduled(EasyMailRequest request, String cronExpression) {
+        return sendScheduled(request, cronExpression, null);
+    }
+
+    @Override
+    public String sendScheduled(EasyMailRequest request, String cronExpression, String taskName) {
+        EasyMailScheduledTask task = EasyMailScheduledTask.builder()
+                .taskName(taskName != null ? taskName : "Cron邮件任务")
+                .mailRequest(request)
+                .scheduleType(EasyMailScheduledTask.ScheduleType.CRON)
+                .cronExpression(cronExpression)
+                .build();
+        
+        return scheduleManager.addTask(task);
+    }
+
+    @Override
+    public String sendDelayed(EasyMailRequest request, long delayMillis) {
+        return sendDelayed(request, delayMillis, null);
+    }
+
+    @Override
+    public String sendDelayed(EasyMailRequest request, long delayMillis, String taskName) {
+        EasyMailScheduledTask task = EasyMailScheduledTask.builder()
+                .taskName(taskName != null ? taskName : "延迟邮件任务")
+                .mailRequest(request)
+                .scheduleType(EasyMailScheduledTask.ScheduleType.DELAY)
+                .delayMillis(delayMillis)
+                .build();
+        
+        return scheduleManager.addTask(task);
+    }
+
+    @Override
+    public String sendAtFixedRate(EasyMailRequest request, long fixedRateMillis) {
+        return sendAtFixedRate(request, fixedRateMillis, null);
+    }
+
+    @Override
+    public String sendAtFixedRate(EasyMailRequest request, long fixedRateMillis, String taskName) {
+        EasyMailScheduledTask task = EasyMailScheduledTask.builder()
+                .taskName(taskName != null ? taskName : "固定频率邮件任务")
+                .mailRequest(request)
+                .scheduleType(EasyMailScheduledTask.ScheduleType.FIXED_RATE)
+                .fixedRateMillis(fixedRateMillis)
+                .build();
+        
+        return scheduleManager.addTask(task);
+    }
+
+    @Override
+    public String sendWithFixedDelay(EasyMailRequest request, long fixedDelayMillis) {
+        return sendWithFixedDelay(request, fixedDelayMillis, null);
+    }
+
+    @Override
+    public String sendWithFixedDelay(EasyMailRequest request, long fixedDelayMillis, String taskName) {
+        EasyMailScheduledTask task = EasyMailScheduledTask.builder()
+                .taskName(taskName != null ? taskName : "固定延迟邮件任务")
+                .mailRequest(request)
+                .scheduleType(EasyMailScheduledTask.ScheduleType.FIXED_DELAY)
+                .fixedDelayMillis(fixedDelayMillis)
+                .build();
+        
+        return scheduleManager.addTask(task);
+    }
+
+    @Override
+    public String sendAtTime(EasyMailRequest request, LocalDateTime executeTime) {
+        return sendAtTime(request, executeTime, null);
+    }
+
+    @Override
+    public String sendAtTime(EasyMailRequest request, LocalDateTime executeTime, String taskName) {
+        EasyMailScheduledTask task = EasyMailScheduledTask.builder()
+                .taskName(taskName != null ? taskName : "定时邮件任务")
+                .mailRequest(request)
+                .scheduleType(EasyMailScheduledTask.ScheduleType.AT_TIME)
+                .executeTime(executeTime)
+                .build();
+        
+        return scheduleManager.addTask(task);
+    }
+
+    // ==================== 定时任务管理方法实现 ====================
+
+    @Override
+    public boolean cancelScheduledTask(String taskId) {
+        return scheduleManager.cancelTask(taskId);
+    }
+
+    @Override
+    public boolean removeScheduledTask(String taskId) {
+        return scheduleManager.removeTask(taskId);
+    }
+
+    @Override
+    public EasyMailScheduledTask getScheduledTask(String taskId) {
+        return scheduleManager.getTask(taskId);
+    }
+
+    @Override
+    public List<EasyMailScheduledTask> getAllScheduledTasks() {
+        return scheduleManager.getAllTasks();
+    }
+
+    @Override
+    public List<EasyMailScheduledTask> getScheduledTasksByStatus(EasyMailScheduledTask.TaskStatus status) {
+        return scheduleManager.getTasksByStatus(status);
+    }
+
+    @Override
+    public List<EasyMailScheduledTask> getRunningScheduledTasks() {
+        return scheduleManager.getRunningTasks();
+    }
+
+    @Override
+    public void cancelAllScheduledTasks() {
+        scheduleManager.cancelAllTasks();
+    }
+
+    @Override
+    public void cleanupCompletedScheduledTasks() {
+        scheduleManager.cleanupCompletedTasks();
+    }
+
+    @Override
+    public Map<String, Object> getScheduledTaskStatistics() {
+        return scheduleManager.getTaskStatistics();
+    }
+
+    @Override
+    public boolean scheduledTaskExists(String taskId) {
+        return scheduleManager.taskExists(taskId);
+    }
+
+    @Override
+    public int getScheduledTaskCount() {
+        return scheduleManager.getTaskCount();
     }
 }
