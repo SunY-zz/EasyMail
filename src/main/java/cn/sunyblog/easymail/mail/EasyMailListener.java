@@ -128,7 +128,12 @@ public class EasyMailListener {
                     folder = serverConnector.openInbox(store);
 
                     // 根据配置策略处理现有未读邮件
-            processExistingUnreadEmails();
+                    EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
+                    if (strategy != EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+                        processExistingUnreadEmails();
+                    } else {
+                        log.info("IGNORE_EXISTING模式：恢复连接时跳过处理现有未读邮件");
+                    }
 
                     // 设置新邮件监听器
                     setupMessageListener();
@@ -187,12 +192,8 @@ public class EasyMailListener {
                     return;
                 }
                 
-                // 检查启动策略，如果是IGNORE_EXISTING则不处理任何邮件（包括新邮件）
-                EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
-                if (strategy == EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
-                    log.debug("配置为IGNORE_EXISTING模式，跳过新邮件处理");
-                    return;
-                }
+                // IGNORE_EXISTING模式只在启动时忽略旧邮件，新邮件事件应该正常处理
+                // 因为messagesAdded是邮件服务器推送的新邮件事件，不是启动时的旧邮件
                 
                 processingEvent.set(true); // 设置标志位
                 try {
@@ -385,7 +386,12 @@ public class EasyMailListener {
             log.info("邮件监听线程已启动");
             
             // 根据配置策略处理现有未读邮件
-            processExistingUnreadEmails();
+            EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
+            if (strategy != EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+                processExistingUnreadEmails();
+            } else {
+                log.info("IGNORE_EXISTING模式：跳过处理现有未读邮件，仅监听新邮件");
+            }
             
             // 添加一个短暂延迟，避免与初始化时的事件检测冲突
             try {
@@ -604,13 +610,6 @@ public class EasyMailListener {
             return;
         }
 
-        // 检查启动策略，如果是IGNORE_EXISTING则不进行轮询检查
-        EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
-        if (strategy == EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
-            log.debug("配置为IGNORE_EXISTING模式，跳过轮询检查");
-            return;
-        }
-
         // 如果正在处理事件通知，则跳过本次轮询
         if (processingEvent.get()) {
             log.debug("正在处理邮件事件，跳过本次轮询");
@@ -645,8 +644,29 @@ public class EasyMailListener {
             if (messages.length > 0) {
                 log.debug("轮询检测到{}封未读邮件", messages.length);
 
+                // 检查启动处理策略
+                EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
+                
                 for (Message message : messages) {
                     String messageId = easyMailCache.getMessageId(message);
+                    
+                    // 如果是IGNORE_EXISTING模式，只处理缓存中没有记录的邮件（真正的新邮件）
+                    if (strategy == EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+                        // 在IGNORE_EXISTING模式下，只有通过事件监听器接收到的新邮件才会被处理
+                        // 轮询检查时发现的未读邮件可能是启动前就存在的，应该跳过
+                        if (!easyMailCache.shouldProcessMessage(messageId)) {
+                            log.debug("IGNORE_EXISTING模式：邮件已处理，跳过轮询处理: {}", messageId);
+                            continue;
+                        } else {
+                            // 在IGNORE_EXISTING模式下，轮询发现的未处理邮件被认为是启动前的旧邮件，跳过处理
+                            log.debug("IGNORE_EXISTING模式：跳过处理启动前存在的未读邮件: {}", messageId);
+                            // 将其标记为已处理，避免后续重复检查
+                            easyMailCache.checkAndMarkAsProcessed(messageId);
+                            continue;
+                        }
+                    }
+                    
+                    // 非IGNORE_EXISTING模式的正常处理逻辑
                     if (!easyMailCache.shouldProcessMessage(messageId)) {
                         log.debug("邮件已处理，跳过轮询处理: {}", messageId);
                         continue;

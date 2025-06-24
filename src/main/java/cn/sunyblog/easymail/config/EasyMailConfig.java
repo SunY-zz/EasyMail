@@ -84,17 +84,17 @@ public class EasyMailConfig {
          */
         private int idleTimeout = 10000;
         /**
-         * 保持连接的间隔时间，默认300秒
+         * 保持连接的间隔时间，默认60秒
          */
-        private int keepAliveInterval = 300;
+        private int keepAliveInterval = 60;
         /**
-         * 重新连接的延迟时间，默认15秒
+         * 重新连接的延迟时间，默认5秒
          */
-        private int reconnectDelay = 15;
+        private int reconnectDelay = 5;
         /**
          * 短延迟时间，默认5秒
          */
-        private int shortDelay = 5;
+        private int shortDelay = 3;
         /**
          * 长延迟时间，默认30秒
          */
