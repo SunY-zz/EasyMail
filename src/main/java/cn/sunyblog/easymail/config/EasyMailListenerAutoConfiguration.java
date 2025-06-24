@@ -27,9 +27,6 @@ import java.util.concurrent.ExecutorService;
 @Import({EasyMailThreadPoolConfig.class, EasyMailSSLTrustInitializer.class})
 @Order(0) // 确保优先级高于MailConfigCompatibilityAutoConfiguration
 public class EasyMailListenerAutoConfiguration {
-    
-    @Autowired
-    private Environment environment;
 
     /**
      * 配置邮件缓存
