@@ -68,7 +68,7 @@ EasyMail 是一个基于 Spring Boot 的应用级邮件服务框架，提供了�
 <dependency>
     <groupId>cn.sunyblog.easymail</groupId>
     <artifactId>easymail-spring-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -94,18 +94,18 @@ public class Application {
 mail:
   # SMTP 发送配置
   smtp:
-    server: smtp.qq.com
+    server: smtp.139.com
     port: 465
-    username: your-email@qq.com
+    username: your-email@139.com
     password: your-auth-code
     
   # IMAP 监听配置（可选）
   imap:
-    server: imap.qq.com
+    server: imap.139.com
     port: 993
-    username: your-email@qq.com
+    username: your-email@139.com
     password: your-auth-code
-    attachment-dir: /path/to/attachments
+    attachment-dir: /path/to/attachments（可选）
 ```
 
 ### 4. 发送邮件
@@ -208,6 +208,13 @@ easymail/
 ├── template/           # 模板引擎
 └── util/               # 工具类
 ```
+
+## 注意
+**目前测试发现：**
+
+1. qq邮箱会使用idle模式进行实时监听，但是这种连接不太稳定，导致新邮件接收不及时，如果有实时监听的需求请使用其他服务商邮箱
+
+2. 163邮箱连接时长较短，连接建立三分钟左右，163服务商就会提示认证错误，重试也无法成功，如果有长连接的需求，也请使用其他服务商邮箱
 
 
 ## 贡献
