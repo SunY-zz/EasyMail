@@ -63,7 +63,7 @@ EasyMail 是一个基于 Spring Boot 的应用级邮件服务框架，提供了�
 ## 快速开始
 
 ### 1. 添加依赖
-
+springboot2项目使用一下依赖
 ```xml
 <dependency>
     <groupId>cn.sunyblog.easymail</groupId>
@@ -71,7 +71,16 @@ EasyMail 是一个基于 Spring Boot 的应用级邮件服务框架，提供了�
     <version>1.0.1</version>
 </dependency>
 ```
-
+项目地址：[https://gitcode.com/sunyZZZ/EasyMail](url)
+springboot3项目使用一下依赖
+```xml
+<dependency>
+    <groupId>cn.sunyblog.easymail</groupId>
+    <artifactId>easymail-spring-boot-starter3</artifactId>
+    <version>1.0.1</version>
+</dependency>
+```
+项目地址：[https://gitcode.com/sunyZZZ/easymail-spring-boot-starter3](url)
 ### 2. 启用 EasyMail
 
 在 Spring Boot 主类上添加 `@EnableEasyMail` 注解：
