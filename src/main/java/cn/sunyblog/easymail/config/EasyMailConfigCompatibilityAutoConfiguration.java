@@ -24,55 +24,17 @@ import org.springframework.core.annotation.Order;
  */
 @Slf4j
 @Configuration
-@EnableConfigurationProperties(EasyMailConfig.class)
 @Order(1) // 确保优先级高于EmailListenerAutoConfiguration
 public class EasyMailConfigCompatibilityAutoConfiguration {
-    
-    @Autowired(required = false)
-    private EasyMailConfig easyMailConfig;
-
-    /**
-     * 当使用原有的 mail.imap 配置格式时，直接注册 MailConfig Bean
-     */
-    @Bean("mailConfig")
-    @ConditionalOnMissingBean(name = "mailConfig")
-    public EasyMailConfig mailConfigFromLegacyProperties(EasyMailConfig mailConfig) {
-        if (mailConfig.getServer() != null && !mailConfig.getServer().trim().isEmpty()) {
-            log.info("使用兼容性配置加载 MailConfig: mail.imap.*");
-            log.info("MailConfig配置: server={}, port={}, protocol={}, username={}",
-                    mailConfig.getServer(), mailConfig.getPort(), mailConfig.getProtocol(), mailConfig.getUsername());
-        } else {
-            log.info("创建默认空的 MailConfig，请检查配置文件中的 mail.imap.* 配置");
-        }
-        return mailConfig;
-    }
-    
-    /**
-     * 配置属性Bean
-     * 确保EasyMailConfig在Spring容器中可用
-     */
-    @Bean
-    @Primary
-    @ConditionalOnProperty(prefix = "mail", name = "enabled", havingValue = "true", matchIfMissing = true)
-    @ConditionalOnMissingBean(name = "easyMailConfig")
-    public EasyMailConfig easyMailConfig() {
-        if (easyMailConfig == null) {
-            log.info("创建默认EasyMail配置");
-            return new EasyMailConfig();
-        }
-        
-        log.info("使用现有EasyMail配置: {}", easyMailConfig);
-        return easyMailConfig;
-    }
     
     /**
      * 邮件服务Bean
      * 确保EasyMailService在Spring容器中可用
      */
     @Bean
-    @ConditionalOnBean(EasyMailConfig.class)
+    @ConditionalOnBean(EasyMailImapConfig.class)
     @ConditionalOnMissingBean(EasyMailService.class)
-    public EasyMailService easyMailService(EasyMailConfig config) {
+    public EasyMailService easyMailService(EasyMailImapConfig config) {
         log.info("创建EasyMailService实例");
         EasyMailService service = new EasyMailService();
         
@@ -103,7 +65,7 @@ public class EasyMailConfigCompatibilityAutoConfiguration {
         /**
          * 验证配置
          */
-        public boolean validateConfig(EasyMailConfig config) {
+        public boolean validateConfig(EasyMailImapConfig config) {
             if (config == null) {
                 log.warn("EasyMail配置为空");
                 return false;
@@ -137,7 +99,7 @@ public class EasyMailConfigCompatibilityAutoConfiguration {
         /**
          * 获取配置摘要
          */
-        public String getConfigSummary(EasyMailConfig config) {
+        public String getConfigSummary(EasyMailImapConfig config) {
             if (config == null) {
                 return "配置为空";
             }

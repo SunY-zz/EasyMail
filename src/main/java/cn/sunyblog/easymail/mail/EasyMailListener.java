@@ -1,6 +1,6 @@
 package cn.sunyblog.easymail.mail;
 
-import cn.sunyblog.easymail.config.EasyMailConfig;
+import cn.sunyblog.easymail.config.EasyMailImapConfig;
 import cn.sunyblog.easymail.exception.EasyMailException;
 import cn.sunyblog.easymail.exception.EasyMailExceptionHandler;
 import cn.sunyblog.easymail.exception.EasyMailProcessException;
@@ -8,6 +8,7 @@ import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.IMAPStore;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -31,15 +32,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Component
 public class EasyMailListener {
 
-    @Resource
-    private EasyMailConfig mailConfig;
-    @Resource
+    @Autowired
+    private EasyMailImapConfig easyMailImapConfig;
+    @Autowired
     private EasyMailProcessor easyMailProcessor;
-    @Resource
+    @Autowired
     private ExecutorService noticeThreadPool;
-    @Resource
+    @Autowired
     private EasyMailCache easyMailCache;
-    @Resource
+    @Autowired
     private EasyMailServerConnector easyMailServerConnector;
 
     private Session session; // 邮箱会话
@@ -56,8 +57,8 @@ public class EasyMailListener {
      */
     public void startListening(EasyMailServerConnector serverConnector) {
         int retryCount = 0;
-        int maxRetries = mailConfig.getListener().getMaxRetries(); // 最大重试次数
-        long retryDelay = mailConfig.getMonitor().getShortDelay() * 1000L; // 重试延迟(毫秒)
+        int maxRetries = easyMailImapConfig.getListener().getMaxRetries(); // 最大重试次数
+        long retryDelay = easyMailImapConfig.getMonitor().getShortDelay() * 1000L; // 重试延迟(毫秒)
 
         while (retryCount < maxRetries) {
             try {
@@ -91,7 +92,7 @@ public class EasyMailListener {
                 serverConnector.closeConnection(folder, store);
 
                 if (retryCount < maxRetries) {
-                    log.info("将在{}秒后重试连接邮件服务器", mailConfig.getMonitor().getShortDelay());
+                    log.info("将在{}秒后重试连接邮件服务器", easyMailImapConfig.getMonitor().getShortDelay());
                     try {
                         Thread.sleep(retryDelay);
                     } catch (InterruptedException ie) {
@@ -114,9 +115,9 @@ public class EasyMailListener {
         Thread recoveryThread = new Thread(() -> {
             log.info("启动邮件服务恢复线程，将定期尝试重新连接");
             int recoveryAttempt = 0;
-            long connectionTimeout = mailConfig.getConnection().getTimeout() * 1000L; // 连接超时时间(毫秒)
+            long connectionTimeout = easyMailImapConfig.getConnection().getTimeout() * 1000L; // 连接超时时间(毫秒)
             log.info("连接超时设置：{}秒", connectionTimeout / 1000);
-            int maxRecoveryAttempts = mailConfig.getMonitor().getReconnectDelay(); // 最大恢复尝试次数
+            int maxRecoveryAttempts = easyMailImapConfig.getMonitor().getReconnectDelay(); // 最大恢复尝试次数
             while (!isRunning.get() && !Thread.currentThread().isInterrupted() && recoveryAttempt < maxRecoveryAttempts) {
                 recoveryAttempt++;
                 log.info("尝试恢复邮件服务连接(第{}次恢复尝试)最大尝试连接次数：{}", recoveryAttempt, maxRecoveryAttempts);
@@ -128,8 +129,8 @@ public class EasyMailListener {
                     folder = serverConnector.openInbox(store);
 
                     // 根据配置策略处理现有未读邮件
-                    EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
-                    if (strategy != EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+                    EasyMailImapConfig.StartupProcessStrategy strategy = easyMailImapConfig.getListener().getStartupProcessStrategy();
+                    if (strategy != EasyMailImapConfig.StartupProcessStrategy.IGNORE_EXISTING) {
                         processExistingUnreadEmails();
                     } else {
                         log.info("IGNORE_EXISTING模式：恢复连接时跳过处理现有未读邮件");
@@ -159,7 +160,7 @@ public class EasyMailListener {
                     serverConnector.closeConnection(folder, store);
 
                     try {
-                        log.info("将在{}秒后再次尝试恢复连接", mailConfig.getMonitor().getLongDelay());
+                        log.info("将在{}秒后再次尝试恢复连接", easyMailImapConfig.getMonitor().getLongDelay());
                         Thread.sleep(connectionTimeout);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
@@ -238,10 +239,10 @@ public class EasyMailListener {
      * 根据配置策略处理现有未读邮件
      */
     private void processExistingUnreadEmails() {
-        EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
+        EasyMailImapConfig.StartupProcessStrategy strategy = easyMailImapConfig.getListener().getStartupProcessStrategy();
         
         // 如果策略是忽略现有邮件，直接返回
-        if (strategy == EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+        if (strategy == EasyMailImapConfig.StartupProcessStrategy.IGNORE_EXISTING) {
             log.info("配置为忽略现有未读邮件，跳过处理");
             return;
         }
@@ -386,8 +387,8 @@ public class EasyMailListener {
             log.info("邮件监听线程已启动");
             
             // 根据配置策略处理现有未读邮件
-            EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
-            if (strategy != EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+            EasyMailImapConfig.StartupProcessStrategy strategy = easyMailImapConfig.getListener().getStartupProcessStrategy();
+            if (strategy != EasyMailImapConfig.StartupProcessStrategy.IGNORE_EXISTING) {
                 processExistingUnreadEmails();
             } else {
                 log.info("IGNORE_EXISTING模式：跳过处理现有未读邮件，仅监听新邮件");
@@ -446,7 +447,7 @@ public class EasyMailListener {
                             // 如果不支持IDLE，使用轮询
                             //log.warn("当前邮件服务不支持IDLE模式，使用轮询方式");
                             try {
-                                TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
+                                TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getShortDelay());
                             } catch (InterruptedException e) {
                                 // 恢复中断标志，以便上层逻辑可以感知到中断请求
                                 Thread.currentThread().interrupt();
@@ -457,7 +458,7 @@ public class EasyMailListener {
                         }
                     } else {
                         log.warn("当前邮件服务不支持IDLE模式，使用轮询方式");
-                        TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
+                        TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getShortDelay());
                         checkNewMessages();
                     }
                 } catch (FolderClosedException fce) {
@@ -467,7 +468,7 @@ public class EasyMailListener {
                             folder.open(Folder.READ_WRITE);
                             log.info("已重新打开文件夹");
                         }
-                        TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
+                        TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getShortDelay());
                     } catch (Exception reconnectEx) {
                         // 检查是否为认证失败异常
                         if (isAuthenticationFailure(reconnectEx)) {
@@ -480,7 +481,7 @@ public class EasyMailListener {
                                 "重新打开文件夹失败");
                         log.error(connectionEx.getFullErrorMessage(), connectionEx);
                         try {
-                            TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getReconnectDelay());
+                            TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getReconnectDelay());
                         } catch (InterruptedException ie) {
                             Thread.currentThread().interrupt();
                             log.warn("线程被中断");
@@ -505,7 +506,7 @@ public class EasyMailListener {
                         // 重新设置监听器
                         setupMessageListener();
                         log.info("邮件服务器重连成功，已重新设置监听器");
-                        TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getReconnectDelay());
+                        TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getReconnectDelay());
                     } catch (Exception reconnectEx) {
                         // 检查重连异常是否也是认证失败
                         if (isAuthenticationFailure(reconnectEx)) {
@@ -518,7 +519,7 @@ public class EasyMailListener {
                                 "重新连接失败");
                         log.error(reconnectConnectionEx.getFullErrorMessage(), reconnectConnectionEx);
                         try {
-                            TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getLongDelay());
+                            TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getLongDelay());
                         } catch (InterruptedException ie) {
                             Thread.currentThread().interrupt();
                             log.warn("线程被中断");
@@ -528,7 +529,7 @@ public class EasyMailListener {
                     EasyMailProcessException processEx = EasyMailProcessException.processingError("邮件监听异常", e);
                     log.error(processEx.getFullErrorMessage(), processEx);
                     try {
-                        TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getReconnectDelay());
+                        TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getReconnectDelay());
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         log.warn("线程被中断");
@@ -560,7 +561,7 @@ public class EasyMailListener {
                         // 保活线程不直接重连，避免与主线程冲突
                         // 这里只是记录状态，让主监听线程处理重连
                     }
-                    TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getKeepAliveInterval());
+                    TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getKeepAliveInterval());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     if (isRunning.get()) {
@@ -581,7 +582,7 @@ public class EasyMailListener {
                         // 对于其他异常，只记录debug级别日志，避免过多错误日志
                         log.debug("保活线程异常: {}", e.getMessage());
                         try {
-                            TimeUnit.SECONDS.sleep(mailConfig.getMonitor().getShortDelay());
+                            TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getShortDelay());
                         } catch (InterruptedException ie) {
                             Thread.currentThread().interrupt();
                             log.debug("保活线程被中断，准备退出");
@@ -645,13 +646,13 @@ public class EasyMailListener {
                 log.debug("轮询检测到{}封未读邮件", messages.length);
 
                 // 检查启动处理策略
-                EasyMailConfig.StartupProcessStrategy strategy = mailConfig.getListener().getStartupProcessStrategy();
+                EasyMailImapConfig.StartupProcessStrategy strategy = easyMailImapConfig.getListener().getStartupProcessStrategy();
                 
                 for (Message message : messages) {
                     String messageId = easyMailCache.getMessageId(message);
                     
                     // 如果是IGNORE_EXISTING模式，只处理缓存中没有记录的邮件（真正的新邮件）
-                    if (strategy == EasyMailConfig.StartupProcessStrategy.IGNORE_EXISTING) {
+                    if (strategy == EasyMailImapConfig.StartupProcessStrategy.IGNORE_EXISTING) {
                         // 在IGNORE_EXISTING模式下，只有通过事件监听器接收到的新邮件才会被处理
                         // 轮询检查时发现的未读邮件可能是启动前就存在的，应该跳过
                         if (!easyMailCache.shouldProcessMessage(messageId)) {

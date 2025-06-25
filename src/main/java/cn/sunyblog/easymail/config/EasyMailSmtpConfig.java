@@ -49,7 +49,7 @@ public class EasyMailSmtpConfig {
     /**
      * 重试配置
      */
-    private EasyMailRetryConfig retry = new EasyMailRetryConfig();
+    private Retry retry = new Retry();
 
     /**
      * 日志配置
@@ -91,6 +91,44 @@ public class EasyMailSmtpConfig {
          * 是否启用STARTTLS
          */
         private boolean mailSmtpStarttlsEnable = true;
+    }
+
+    /**
+     * 重试配置类
+     */
+    @Data
+    public static class Retry {
+        /**
+         * 是否启用重试机制
+         */
+        private boolean enabled = true;
+
+        /**
+         * 最大重试次数（不包括第一次尝试）
+         */
+        private int maxRetries = 3;
+
+        /**
+         * 初始重试延迟（毫秒）
+         */
+        private long initialDelayMs = 1000;
+
+        /**
+         * 最大重试延迟（毫秒）
+         */
+        private long maxDelayMs = 10000;
+
+        /**
+         * 是否使用指数退避策略
+         * 如果为true，则每次重试的延迟时间会按照指数增长
+         */
+        private boolean useExponentialBackoff = true;
+
+        /**
+         * 退避乘数
+         * 当使用指数退避策略时，每次重试的延迟时间会乘以这个系数
+         */
+        private double backoffMultiplier = 2.0;
     }
 
     /**

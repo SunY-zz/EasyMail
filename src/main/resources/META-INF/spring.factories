@@ -7,9 +7,6 @@ cn.sunyblog.easymail.processor.config.AnnotationDrivenEasyMailProcessorAutoConfi
 
 # Spring Boot Configuration Properties
 org.springframework.boot.context.properties.EnableConfigurationProperties=\
-  cn.sunyblog.easymail.config.EasyMailListenerProperties,\
-  cn.sunyblog.easymail.config.EasyMailConfig,\
-  cn.sunyblog.easymail.config.EasyMailSenderProperties,\
+  cn.sunyblog.easymail.config.EasyMailImapConfig,\
   cn.sunyblog.easymail.config.EasyMailSmtpConfig,\
-  cn.sunyblog.easymail.config.EasyMailRetryConfig,\
   cn.sunyblog.easymail.processor.config.AnnotationDrivenEasyMailProcessorProperties

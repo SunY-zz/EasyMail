@@ -2,31 +2,31 @@
   "groups": [
     {
       "name": "mail.imap",
-      "type": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "type": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "EasyMail IMAP邮件监听配置"
     },
     {
       "name": "mail.imap.connection",
-      "type": "cn.sunyblog.easymail.config.EasyMailConfig$Connection",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "type": "cn.sunyblog.easymail.config.EasyMailImapConfig$Connection",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "IMAP连接配置"
     },
     {
       "name": "mail.imap.monitor",
-      "type": "cn.sunyblog.easymail.config.EasyMailConfig$Monitor",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "type": "cn.sunyblog.easymail.config.EasyMailImapConfig$Monitor",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "IMAP监控配置"
     },
     {
       "name": "mail.imap.listener",
-      "type": "cn.sunyblog.easymail.config.EasyMailConfig$Listener",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "type": "cn.sunyblog.easymail.config.EasyMailImapConfig$Listener",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "IMAP监听配置"
     },
     {
       "name": "mail.imap.log",
-      "type": "cn.sunyblog.easymail.config.EasyMailConfig$Log",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "type": "cn.sunyblog.easymail.config.EasyMailImapConfig$Log",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "IMAP日志配置"
     },
     {
@@ -48,7 +48,8 @@
     },
     {
       "name": "mail.smtp.retry",
-      "type": "cn.sunyblog.easymail.config.EasyMailRetryConfig",
+      "type": "cn.sunyblog.easymail.config.EasyMailSmtpConfig$Retry",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailSmtpConfig",
       "description": "SMTP重试配置"
     },
     {
@@ -62,127 +63,127 @@
     {
       "name": "mail.imap.server",
       "type": "java.lang.String",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "IMAP邮件服务器地址，例如：imap.qq.com"
     },
     {
       "name": "mail.imap.port",
       "type": "java.lang.String",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "IMAP邮件服务器端口，例如：993"
     },
     {
       "name": "mail.imap.protocol",
       "type": "java.lang.String",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "邮件协议，例如：imaps"
     },
     {
       "name": "mail.imap.username",
       "type": "java.lang.String",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "邮件账户用户名"
     },
     {
       "name": "mail.imap.password",
       "type": "java.lang.String",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "邮件账户密码或授权码"
     },
     {
       "name": "mail.imap.attachment-dir",
       "type": "java.lang.String",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "附件存储目录路径"
     },
     {
       "name": "mail.imap.auto-start",
       "type": "java.lang.Boolean",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig",
       "description": "是否自动启动邮件监听服务",
       "defaultValue": false
     },
     {
       "name": "mail.imap.connection.timeout",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Connection",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Connection",
       "description": "连接超时时间（毫秒）",
       "defaultValue": 15000
     },
     {
       "name": "mail.imap.connection.read-timeout",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Connection",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Connection",
       "description": "读取超时时间（毫秒）",
       "defaultValue": 30000
     },
     {
       "name": "mail.imap.connection.write-timeout",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Connection",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Connection",
       "description": "写入超时时间（毫秒）",
       "defaultValue": 30000
     },
     {
       "name": "mail.imap.monitor.idle-timeout",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Monitor",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Monitor",
       "description": "IDLE状态超时时间（毫秒）",
       "defaultValue": 10000
     },
     {
       "name": "mail.imap.monitor.keep-alive-interval",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Monitor",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Monitor",
       "description": "保持连接的间隔时间（秒）",
       "defaultValue": 300
     },
     {
       "name": "mail.imap.monitor.reconnect-delay",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Monitor",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Monitor",
       "description": "重新连接的延迟时间（秒）",
       "defaultValue": 15
     },
     {
       "name": "mail.imap.monitor.short-delay",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Monitor",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Monitor",
       "description": "短延迟时间（秒）",
       "defaultValue": 5
     },
     {
       "name": "mail.imap.monitor.long-delay",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Monitor",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Monitor",
       "description": "长延迟时间（秒）",
       "defaultValue": 30
     },
     {
       "name": "mail.imap.monitor.task-timeout",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Monitor",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Monitor",
       "description": "任务超时时间（秒）",
       "defaultValue": 300
     },
     {
       "name": "mail.imap.listener.max-retries",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Listener",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Listener",
       "description": "最大重试次数",
       "defaultValue": 20
     },
     {
       "name": "mail.imap.listener.startup-process-strategy",
       "type": "java.lang.String",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Listener",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Listener",
       "description": "启动处理策略，可选值：MARK_AS_READ_ONLY、IGNORE_EXISTING、FULL_PROCESS",
       "defaultValue": "MARK_AS_READ_ONLY"
        },
     {
       "name": "mail.imap.log.debug-enabled",
       "type": "java.lang.Boolean",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailConfig$Log",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Log",
       "description": "是否启用调试日志",
       "defaultValue": false
     },
@@ -254,42 +255,42 @@
     {
       "name": "mail.smtp.retry.enabled",
       "type": "java.lang.Boolean",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailRetryConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailSmtpConfig$Retry",
       "description": "是否启用重试机制",
       "defaultValue": true
     },
     {
       "name": "mail.smtp.retry.max-retries",
       "type": "java.lang.Integer",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailRetryConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailSmtpConfig$Retry",
       "description": "最大重试次数（不包括第一次尝试）",
       "defaultValue": 3
     },
     {
       "name": "mail.smtp.retry.initial-delay-ms",
       "type": "java.lang.Long",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailRetryConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailSmtpConfig$Retry",
       "description": "初始重试延迟（毫秒）",
       "defaultValue": 1000
     },
     {
       "name": "mail.smtp.retry.max-delay-ms",
       "type": "java.lang.Long",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailRetryConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailSmtpConfig$Retry",
       "description": "最大重试延迟（毫秒）",
       "defaultValue": 10000
     },
     {
       "name": "mail.smtp.retry.use-exponential-backoff",
       "type": "java.lang.Boolean",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailRetryConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailSmtpConfig$Retry",
       "description": "是否使用指数退避策略",
       "defaultValue": true
     },
     {
       "name": "mail.smtp.retry.backoff-multiplier",
       "type": "java.lang.Double",
-      "sourceType": "cn.sunyblog.easymail.config.EasyMailRetryConfig",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailSmtpConfig$Retry",
       "description": "退避乘数，当使用指数退避策略时的延迟倍数",
       "defaultValue": 2.0
     },
@@ -462,8 +463,7 @@
         {
           "value": "FULL_PROCESS",
           "description": "完全处理旧邮件,并标记为已读（包括内容解析和业务处理)"
-        },
-
+        }
       ]
     }
   ]

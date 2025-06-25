@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 @Configuration
 @ConfigurationProperties(prefix = "mail.imap")
-public class EasyMailConfig {
+public class EasyMailImapConfig {
     /**
      * 邮件服务器地址
      */
@@ -52,7 +52,7 @@ public class EasyMailConfig {
     /**
      * 设置自动启动
      */
-    private boolean autoStart = false;
+    private boolean autoStart = true;
 
 
     /**

@@ -36,24 +36,21 @@ import javax.annotation.Resource;
 @Slf4j
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties({EasyMailSmtpConfig.class, EasyMailRetryConfig.class})
-@ConditionalOnProperty(prefix = "email.sender", name = "enabled", havingValue = "true", matchIfMissing = true)
+@EnableConfigurationProperties({EasyMailSmtpConfig.class})
+@ConditionalOnProperty(prefix = "mail.smtp", name = "server", matchIfMissing = false)
 @Import({EasyMailThreadPoolConfig.class})
 public class EasyMailSenderAutoConfiguration {
 
     @Resource
     private EasyMailSmtpConfig easyMailSmtpConfig;
 
-    @Resource
-    private EasyMailRetryConfig easyMailRetryConfig;
-
     @PostConstruct
     public void init() {
         log.info("EmailSender 自动配置已启用");
         log.info("SMTP配置: host={}, port={}, username={}",
                 easyMailSmtpConfig.getServer(), easyMailSmtpConfig.getPort(), easyMailSmtpConfig.getUsername());
-        log.info("重试配置: maxRetries={}, retryDelay={}",
-                easyMailRetryConfig.getMaxRetries(), easyMailRetryConfig.getInitialDelayMs());
+        log.info("重试配置: maxRetries={}, initialDelay={}ms",
+                easyMailSmtpConfig.getRetry().getMaxRetries(), easyMailSmtpConfig.getRetry().getInitialDelayMs());
     }
 
     /**

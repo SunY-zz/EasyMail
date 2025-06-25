@@ -1,7 +1,7 @@
 package cn.sunyblog.easymail.mail;
 
 import cn.sunyblog.easymail.api.EasyMailListenerApi;
-import cn.sunyblog.easymail.config.EasyMailConfig;
+import cn.sunyblog.easymail.config.EasyMailImapConfig;
 import cn.sunyblog.easymail.processor.config.AnnotationDrivenEasyMailProcessorManager;
 import cn.sunyblog.easymail.processor.handler.EasyMailContextBuilder;
 import lombok.Data;
@@ -30,13 +30,13 @@ import cn.sunyblog.easymail.exception.EasyMailProcessException;
 @Component
 public class EasyMailProcessor {
 
-    @Resource
-    private EasyMailConfig mailConfig;
-    @Resource
+    @Autowired
+    private EasyMailImapConfig easyMailImapConfig;
+    @Autowired
     private EasyMailContentParser contentParser;
-    @Resource
+    @Autowired
     private EasyMailCache easyMailCache;
-    @Resource
+    @Autowired
     private EasyMailListenerApi easyMailListenerApi;
     
     // 移除对EasyMailService的直接依赖，避免循环依赖
@@ -107,7 +107,7 @@ public class EasyMailProcessor {
                         return false;
                     }
                     // 直接使用原始message，避免重复解析
-                    processed = annotationProcessorManager.processEmail(message, mailConfig.getAttachmentDir());
+                    processed = annotationProcessorManager.processEmail(message, easyMailImapConfig.getAttachmentDir());
                     log.info("注解驱动邮件处理完成");
                 } catch (Exception e) {
                     // 如果是中断异常，直接返回
@@ -130,7 +130,7 @@ public class EasyMailProcessor {
                         return false;
                     }
                     // 只有在需要时才解析邮件内容
-                    emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
+                    emailContent = contentParser.parseContent(message, easyMailImapConfig.getAttachmentDir());
                     Object result = easyMailProcessorFunction.process(message, emailContent, subject, from);
                     processed = (result != null);
                     log.info("函数式邮件处理结果: {}", result);
@@ -154,7 +154,7 @@ public class EasyMailProcessor {
                         return false;
                     }
                     // 只有在需要时才解析邮件内容
-                    emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
+                    emailContent = contentParser.parseContent(message, easyMailImapConfig.getAttachmentDir());
                     processed = easyMailListenerApi.processEmail(message, emailContent, subject, from);
                     log.info("邮件处理器[{}]处理结果: {}", easyMailListenerApi.getProcessorName(), processed);
                 } catch (Exception e) {
@@ -176,7 +176,7 @@ public class EasyMailProcessor {
                     return false;
                 }
                 // 只有在需要时才解析邮件内容
-                emailContent = contentParser.parseContent(message, mailConfig.getAttachmentDir());
+                emailContent = contentParser.parseContent(message, easyMailImapConfig.getAttachmentDir());
                 processed = processVerificationCodeEmail(subject, emailContent);
             }
 

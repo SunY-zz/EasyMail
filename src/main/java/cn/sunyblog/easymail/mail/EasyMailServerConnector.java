@@ -1,12 +1,13 @@
 package cn.sunyblog.easymail.mail;
 
-import cn.sunyblog.easymail.config.EasyMailConfig;
+import cn.sunyblog.easymail.config.EasyMailImapConfig;
 import cn.sunyblog.easymail.exception.EasyMailException;
 import cn.sunyblog.easymail.exception.EasyMailExceptionHandler;
 import cn.sunyblog.easymail.util.EasyMailSSLTrustUtil;
 import com.sun.mail.imap.IMAPStore;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -32,8 +33,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @Component
 public class EasyMailServerConnector {
 
-    @Resource
-    private EasyMailConfig mailConfig;
+    @Autowired
+    private EasyMailImapConfig mailConfig;
 
 
     /**
