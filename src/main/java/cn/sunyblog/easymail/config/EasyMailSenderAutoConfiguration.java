@@ -46,10 +46,10 @@ public class EasyMailSenderAutoConfiguration {
 
     @PostConstruct
     public void init() {
-        log.info("EmailSender 自动配置已启用");
-        log.info("SMTP配置: host={}, port={}, username={}",
+        log.debug("EmailSender 自动配置已启用");
+        log.debug("SMTP配置: host={}, port={}, username={}",
                 easyMailSmtpConfig.getServer(), easyMailSmtpConfig.getPort(), easyMailSmtpConfig.getUsername());
-        log.info("重试配置: maxRetries={}, initialDelay={}ms",
+        log.debug("重试配置: maxRetries={}, initialDelay={}ms",
                 easyMailSmtpConfig.getRetry().getMaxRetries(), easyMailSmtpConfig.getRetry().getInitialDelayMs());
     }
 
@@ -60,7 +60,7 @@ public class EasyMailSenderAutoConfiguration {
     @ConditionalOnMissingBean
     public EasyMailSendTemplateManager easyMailSendTemplateManager() {
         EasyMailSendTemplateManager manager = new EasyMailSendTemplateManager();
-        log.info("EmailTemplateManager 已创建");
+        log.debug("EmailTemplateManager 已创建");
         return manager;
     }
 
@@ -71,7 +71,7 @@ public class EasyMailSenderAutoConfiguration {
     @ConditionalOnMissingBean
     public EasyMailSendMonitor easyMailSendMonitor() {
         EasyMailSendMonitor monitor = new EasyMailSendMonitor();
-        log.info("EmailSendMonitor 已创建");
+        log.debug("EmailSendMonitor 已创建");
         return monitor;
     }
 
@@ -91,7 +91,7 @@ public class EasyMailSenderAutoConfiguration {
     @ConditionalOnMissingBean
     public DefaultEasyMailSendStrategy defaultEasyMailSendStrategy() {
         DefaultEasyMailSendStrategy strategy = new DefaultEasyMailSendStrategy();
-        log.info("DefaultEmailSendStrategy 已创建");
+        log.debug("DefaultEmailSendStrategy 已创建");
         return strategy;
     }
 
@@ -102,7 +102,7 @@ public class EasyMailSenderAutoConfiguration {
     @ConditionalOnMissingBean
     public BatchEasyMailSendStrategy batchEasyMailSendStrategy() {
         BatchEasyMailSendStrategy strategy = new BatchEasyMailSendStrategy();
-        log.info("BatchEmailSendStrategy 已创建");
+        log.debug("BatchEmailSendStrategy 已创建");
         return strategy;
     }
 
@@ -123,7 +123,7 @@ public class EasyMailSenderAutoConfiguration {
     @ConditionalOnMissingBean
     public EasyMailSenderService emailSenderService() {
         EasyMailSenderServiceImpl service = new EasyMailSenderServiceImpl();
-        log.info("EmailSenderService 已创建");
+        log.debug("EmailSenderService 已创建");
         return service;
     }
 
@@ -140,7 +140,7 @@ public class EasyMailSenderAutoConfiguration {
         scheduler.setWaitForTasksToCompleteOnShutdown(true);
         scheduler.setAwaitTerminationSeconds(60);
         scheduler.initialize();
-        log.info("EasyMail定时任务调度器已创建，线程池大小: 5");
+        log.debug("EasyMail定时任务调度器已创建，线程池大小: 5");
         return scheduler;
     }
 
@@ -152,7 +152,7 @@ public class EasyMailSenderAutoConfiguration {
     public EasyMailTaskScheduler easyMailTaskScheduler(ThreadPoolTaskScheduler threadPoolTaskScheduler) {
         EasyMailTaskScheduler taskScheduler = new EasyMailTaskScheduler();
         taskScheduler.setTaskScheduler(threadPoolTaskScheduler);
-        log.info("EasyMailTaskScheduler 已创建");
+        log.debug("EasyMailTaskScheduler 已创建");
         return taskScheduler;
     }
 
@@ -162,7 +162,7 @@ public class EasyMailSenderAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public EasyMailScheduleManager easyMailScheduleManager() {
-        log.info("EasyMailScheduleManager 已创建");
+        log.debug("EasyMailScheduleManager 已创建");
         return new EasyMailScheduleManager();
     }
 }

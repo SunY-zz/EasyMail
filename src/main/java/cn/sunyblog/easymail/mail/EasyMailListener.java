@@ -80,7 +80,7 @@ public class EasyMailListener {
                 // 启动保活线程
                 startKeepAliveThread();
 
-                log.info("邮件监听服务启动完成");
+                log.debug("邮件监听服务启动完成");
                 return; // 成功启动，退出方法
             } catch (Exception e) {
                 retryCount++;
@@ -384,7 +384,7 @@ public class EasyMailListener {
      */
     private void startMonitorThread(EasyMailServerConnector serverConnector) {
         monitorThread = new Thread(() -> {
-            log.info("邮件监听线程已启动");
+            log.debug("邮件监听线程已启动");
             
             // 根据配置策略处理现有未读邮件
             EasyMailImapConfig.StartupProcessStrategy strategy = easyMailImapConfig.getListener().getStartupProcessStrategy();
@@ -536,7 +536,7 @@ public class EasyMailListener {
                     }
                 }
             }
-            log.info("邮件监听线程已停止");
+            log.debug("邮件监听线程已停止");
         });
 
         monitorThread.setDaemon(true);
@@ -548,7 +548,7 @@ public class EasyMailListener {
      */
     private void startKeepAliveThread() {
         keepAliveThread = new Thread(() -> {
-            log.info("保活线程已启动");
+            log.debug("保活线程已启动");
             while (isRunning.get()) {
                 try {
                     if (store != null && store.isConnected() &&
@@ -732,14 +732,14 @@ public class EasyMailListener {
      * @param serverConnector 服务器连接器
      */
     public void stopListening(EasyMailServerConnector serverConnector) {
-        log.info("正在关闭邮件监听服务");
+        //log.info("正在关闭邮件监听服务");
 
         // 首先设置停止标志，阻止新任务提交
         isRunning.set(false);
 
         // 优雅关闭线程池
         if (noticeThreadPool != null && !noticeThreadPool.isShutdown()) {
-            log.info("正在关闭邮件处理线程池");
+            //log.info("正在关闭邮件处理线程池");
             noticeThreadPool.shutdown(); // 不再接受新任务
             
             try {
@@ -751,11 +751,7 @@ public class EasyMailListener {
                     // 再等待1秒确保线程被中断
                     if (!noticeThreadPool.awaitTermination(1, TimeUnit.SECONDS)) {
                         log.error("无法强制关闭邮件处理线程池");
-                    } else {
-                        log.info("邮件处理线程池已强制关闭");
-                    }
-                } else {
-                    log.info("邮件处理线程池已优雅关闭");
+                    }  //log.info("邮件处理线程池已强制关闭");
                 }
             } catch (InterruptedException e) {
                 log.warn("等待线程池关闭被中断");
@@ -789,7 +785,7 @@ public class EasyMailListener {
         // 最后关闭邮件服务器连接
         serverConnector.closeConnection(folder, store);
 
-        log.info("邮件监听服务已成功关闭");
+        //log.info("邮件监听服务已成功关闭");
     }
 
     /**

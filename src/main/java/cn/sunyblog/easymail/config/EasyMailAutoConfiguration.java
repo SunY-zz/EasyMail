@@ -59,13 +59,13 @@ public class EasyMailAutoConfiguration implements ImportAware {
             String[] scanPackages = enableEasyMailAttributes.getStringArray("scanPackages");
             String configPrefix = enableEasyMailAttributes.getString("configPrefix");
 
-            log.info("EasyMail配置信息:");
-            log.info("  - 自动启动: {}", autoStart);
-            log.info("  - 启用发送服务: {}", enableSender);
-            log.info("  - 启用监听服务: {}", enableListener);
-            log.info("  - 启用处理器: {}", enableProcessor);
-            log.info("  - 扫描包路径: {}", scanPackages.length > 0 ? String.join(", ", scanPackages) : "默认扫描所有包");
-            log.info("  - 配置前缀: {}", configPrefix);
+            log.debug("EasyMail配置信息:");
+            log.debug("  - 自动启动: {}", autoStart);
+            log.debug("  - 启用发送服务: {}", enableSender);
+            log.debug("  - 启用监听服务: {}", enableListener);
+            log.debug("  - 启用处理器: {}", enableProcessor);
+            log.debug("  - 扫描包路径: {}", scanPackages.length > 0 ? String.join(", ", scanPackages) : "默认扫描所有包");
+            log.debug("  - 配置前缀: {}", configPrefix);
 
             // 如果启用自动启动且邮件服务可用，则启动邮件监听
             if (autoStart && easyMailService != null) {
@@ -74,7 +74,7 @@ public class EasyMailAutoConfiguration implements ImportAware {
                     easyMailService.setAutoStart(true);
                     // 调用初始化方法，这会根据autoStart标志决定是否启动
                     easyMailService.init();
-                    log.info("EasyMail邮件服务已自动启动");
+                    log.debug("EasyMail邮件服务已自动启动");
                 } catch (Exception e) {
                     log.warn("EasyMail邮件服务自动启动失败，可能需要检查配置: {}", e.getMessage());
                     log.debug("详细错误信息:", e);

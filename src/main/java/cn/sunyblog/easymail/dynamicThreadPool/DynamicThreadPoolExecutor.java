@@ -92,7 +92,7 @@ public class DynamicThreadPoolExecutor extends ThreadPoolExecutor {
             }
 
             // 记录监控日志
-            logMetrics(metrics);
+            //logMetrics(metrics);
 
         } catch (Exception e) {
             System.err.println("监控调整过程中发生异常: " + e.getMessage());
@@ -236,6 +236,6 @@ public class DynamicThreadPoolExecutor extends ThreadPoolExecutor {
     @Override
     public void shutdown() {
         super.shutdown();
-        System.out.println("动态线程池已关闭");
+        //System.out.println("动态线程池已关闭");
     }
 }

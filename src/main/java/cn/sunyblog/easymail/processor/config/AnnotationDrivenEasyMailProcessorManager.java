@@ -46,7 +46,7 @@ public class AnnotationDrivenEasyMailProcessorManager {
         this.contextBuilder = contextBuilder;
         this.properties = properties;
 
-        log.info("注解驱动邮件处理器管理器初始化完成");
+        log.debug("注解驱动邮件处理器管理器初始化完成");
         logConfiguration();
     }
 

@@ -84,7 +84,7 @@ public class EasyMailSSLTrustUtil {
             // 设置全局SSL上下文
             SSLContext.setDefault(sslContext);
 
-            log.info("已全局配置SSL信任所有证书");
+            log.debug("已全局配置SSL信任所有证书");
         } catch (NoSuchAlgorithmException | KeyManagementException e) {
             log.error("配置SSL信任管理器失败: {}", e.getMessage(), e);
         }

@@ -34,7 +34,7 @@ public class AnnotationDrivenEasyMailProcessorAutoConfiguration {
             EasyMailContextBuilder contextBuilder,
             AnnotationDrivenEasyMailProcessorProperties properties) {
 
-        log.info("初始化注解驱动邮件处理器管理器");
+        log.debug("初始化注解驱动邮件处理器管理器");
 
         return new AnnotationDrivenEasyMailProcessorManager(
                 handlerRegistry, handlerExecutor, contextBuilder, properties);

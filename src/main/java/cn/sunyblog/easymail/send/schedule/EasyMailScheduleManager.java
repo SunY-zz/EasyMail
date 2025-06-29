@@ -40,14 +40,14 @@ public class EasyMailScheduleManager {
 
     @PostConstruct
     public void init() {
-        log.info("邮件定时任务管理器初始化完成");
+        log.debug("邮件定时任务管理器初始化完成");
     }
 
     @PreDestroy
     public void destroy() {
-        log.info("正在关闭邮件定时任务管理器...");
+        log.debug("正在关闭邮件定时任务管理器...");
         cancelAllTasks();
-        log.info("邮件定时任务管理器已关闭");
+        log.debug("邮件定时任务管理器已关闭");
     }
 
     /**

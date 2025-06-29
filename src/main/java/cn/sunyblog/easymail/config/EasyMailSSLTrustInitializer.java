@@ -15,7 +15,7 @@ public class EasyMailSSLTrustInitializer {
 
     @PostConstruct
     public void init() {
-        log.info("初始化SSL信任设置...");
+        log.debug("初始化SSL信任设置...");
         EasyMailSSLTrustUtil.trustAllCertificates();
     }
 }

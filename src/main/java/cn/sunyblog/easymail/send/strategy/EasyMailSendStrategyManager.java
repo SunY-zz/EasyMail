@@ -52,9 +52,9 @@ public class EasyMailSendStrategyManager {
         // 按优先级降序排序
         strategies.sort((s1, s2) -> Integer.compare(s2.getPriority(), s1.getPriority()));
 
-        log.info("邮件发送策略管理器初始化完成，已注册 {} 个策略", strategies.size());
+        log.debug("邮件发送策略管理器初始化完成，已注册 {} 个策略", strategies.size());
         strategies.forEach(strategy ->
-                log.info("策略: {} (优先级: {}) - {}",
+                log.debug("策略: {} (优先级: {}) - {}",
                         strategy.getStrategyName(), strategy.getPriority(), strategy.getDescription()));
     }
 
