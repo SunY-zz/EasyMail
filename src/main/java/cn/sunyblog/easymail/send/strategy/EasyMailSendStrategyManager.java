@@ -27,8 +27,6 @@ public class EasyMailSendStrategyManager {
     @Resource
     private BatchEasyMailSendStrategy batchStrategy;
 
-    @Resource
-    private HighPriorityEasyMailSendStrategy highPriorityStrategy;
 
     /**
      * 策略注册表，按优先级排序
@@ -50,7 +48,6 @@ public class EasyMailSendStrategyManager {
         // 注册所有策略并按优先级排序
         registerStrategy(defaultStrategy);
         registerStrategy(batchStrategy);
-        registerStrategy(highPriorityStrategy);
 
         // 按优先级降序排序
         strategies.sort((s1, s2) -> Integer.compare(s2.getPriority(), s1.getPriority()));
@@ -136,12 +133,6 @@ public class EasyMailSendStrategyManager {
 
         int totalRecipients = getTotalRecipientCount(toList, ccList, bccList);
         boolean hasAttachments = attachments != null && !attachments.isEmpty();
-
-        // 检查是否为紧急邮件
-        if (highPriorityStrategy.isUrgentEmail(subject, content)) {
-            log.debug("检测到紧急邮件，选择高优先级策略");
-            return highPriorityStrategy;
-        }
 
         // 按优先级查找支持当前场景的策略
         for (EasyMailSendStrategy strategy : strategies) {

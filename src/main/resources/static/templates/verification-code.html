@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>验证码邮件</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .header {
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #28a745;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .verification-code {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin: 25px 0;
+            letter-spacing: 8px;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        .info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .warning {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+        .expire-time {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 验证码</h1>
+        </div>
+        
+        <p>您好，${username}！</p>
+        
+        <p>您正在进行 <strong>${operation}</strong> 操作，请使用以下验证码：</p>
+        
+        <div class="verification-code">
+            ${verificationCode}
+        </div>
+        
+        <div class="info">
+            <p><strong>📝 使用说明：</strong></p>
+            <p>请在 <span class="expire-time">${expireMinutes} 分钟</span> 内输入此验证码完成验证。</p>
+        </div>
+        
+        <div class="warning">
+            <p><strong>⚠️ 安全提醒：</strong></p>
+            <p>• 请勿将验证码告诉他人</p>
+            <p>• 如非本人操作，请忽略此邮件</p>
+            <p>• 验证码仅限本次使用</p>
+        </div>
+        
+        <div class="footer">
+            <p>此邮件由系统自动发送，请勿回复。</p>
+            <p>发送时间：${sendTime}</p>
+            <p>&copy; 2024 EasyMail 邮件服务</p>
+        </div>
+    </div>
+</body>
+</html>

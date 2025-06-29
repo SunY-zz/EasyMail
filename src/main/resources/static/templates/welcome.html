@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>欢迎邮件</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 28px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .highlight {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+        .user-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>欢迎加入我们！</h1>
+        </div>
+        
+        <div class="content">
+            <p>亲爱的 <strong>${username}</strong>，</p>
+            
+            <p>感谢您注册我们的服务！我们很高兴您能加入我们的大家庭。</p>
+            
+            <div class="user-info">
+                <h3>您的账户信息：</h3>
+                <p><strong>用户名：</strong> ${username}</p>
+                <p><strong>邮箱：</strong> ${email}</p>
+                <p><strong>注册时间：</strong> ${registerTime}</p>
+            </div>
+            
+            <div class="highlight">
+                <p><strong>重要提醒：</strong></p>
+                <p>为了确保账户安全，请妥善保管您的登录信息，不要与他人分享。</p>
+            </div>
+            
+            <p>点击下面的按钮开始您的旅程：</p>
+            
+            <a href="${activationUrl}" class="button">激活账户</a>
+            
+            <p>如果您有任何问题，请随时联系我们的客服团队。</p>
+        </div>
+        
+        <div class="footer">
+            <p>此邮件由系统自动发送，请勿回复。</p>
+            <p>&copy; 2024 EasyMail 邮件服务. 保留所有权利。</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -7,8 +7,15 @@ import cn.sunyblog.easymail.exception.EasyMailException;
 import cn.sunyblog.easymail.exception.EasyMailExceptionHandler;
 import cn.sunyblog.easymail.exception.EasyMailTemplateException;
 import cn.sunyblog.easymail.exception.EasyMailValidationException;
-import cn.sunyblog.easymail.send.template.EasyMailSendTemplate;
 import cn.sunyblog.easymail.send.template.EasyMailSendTemplateManager;
+import cn.sunyblog.easymail.send.template.EasyMailSendTemplate;
+import cn.sunyblog.easymail.template.SimpleEasyMailSendTemplateEngine;
+import org.springframework.core.io.ClassPathResource;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+
 import cn.sunyblog.easymail.send.event.EasyMailSendEventListener;
 import cn.sunyblog.easymail.send.monitor.EasyMailSendMonitor;
 import cn.sunyblog.easymail.send.strategy.EasyMailSendStrategyManager;
@@ -21,9 +28,6 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.mail.*;
-import java.io.File;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -85,9 +89,19 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
 
             // 如果是模板邮件
             if (request.isTemplate()) {
-                EasyMailSendTemplate template = templateManager.getTemplate(request.getTemplateId());
-                if (template == null) {
-                    throw EasyMailTemplateException.templateNotFound(request.getTemplateId());
+                EasyMailSendTemplate template;
+
+                // 检查是否为文件路径模板
+                if (request.getTemplateId().startsWith("file:")) {
+                    // 处理文件路径模板
+                    String filePath = request.getTemplateId().substring(5); // 移除"file:"前缀
+                    template = createTemplateFromFile(filePath, request.getSubject());
+                } else {
+                    // 处理注册的模板
+                    template = templateManager.getTemplate(request.getTemplateId());
+                    if (template == null) {
+                        throw EasyMailTemplateException.templateNotFound(request.getTemplateId());
+                    }
                 }
 
                 try {
@@ -722,5 +736,82 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
     @Override
     public int getScheduledTaskCount() {
         return scheduleManager.getTaskCount();
+    }
+
+    /**
+     * 从文件创建临时模板
+     *
+     * @param filePath 文件路径（不包含.html后缀）
+     * @param subject  邮件主题
+     * @return 创建的模板
+     */
+    private EasyMailSendTemplate createTemplateFromFile(String filePath, String subject) {
+        try {
+            // 首先尝试从classpath加载
+            String htmlContent = loadTemplateFromClasspath(filePath);
+            if (htmlContent == null) {
+                // 如果classpath加载失败，尝试从文件系统加载
+                htmlContent = loadTemplateFromFileSystem(filePath);
+            }
+
+            if (htmlContent == null) {
+                throw EasyMailTemplateException.templateNotFound(filePath);
+            }
+
+            // 创建临时模板
+            return EasyMailSendTemplate.builder()
+                    .templateId("temp_" + filePath + "_" + System.currentTimeMillis())
+                    .templateName("临时HTML模板: " + filePath)
+                    .subjectTemplate(subject)
+                    .contentTemplate(htmlContent)
+                    .isHtml(true)
+                    .description("从文件动态加载的HTML模板")
+                    .version("1.0")
+                    .createTime(System.currentTimeMillis())
+                    .build();
+
+        } catch (Exception e) {
+            log.error("加载HTML模板文件失败: {}", filePath, e);
+            throw EasyMailTemplateException.templateNotFound(filePath);
+        }
+    }
+
+    /**
+     * 从classpath加载模板文件
+     */
+    private String loadTemplateFromClasspath(String filePath) {
+        try {
+            String resourcePath = "static/templates/" + filePath + ".html";
+            ClassPathResource resource = new ClassPathResource(resourcePath);
+
+            if (resource.exists()) {
+                try (InputStream inputStream = resource.getInputStream()) {
+                    ByteArrayOutputStream resultStream = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[1024];
+                    int length;
+                    while ((length = inputStream.read(buffer)) != -1) {
+                        resultStream.write(buffer, 0, length);
+                    }
+                    return resultStream.toString(StandardCharsets.UTF_8.name());
+                }
+            }
+        } catch (Exception e) {
+            log.debug("从classpath加载模板失败: {}", filePath, e);
+        }
+        return null;
+    }
+
+    /**
+     * 从文件系统加载模板文件
+     */
+    private String loadTemplateFromFileSystem(String filePath) {
+        try {
+            SimpleEasyMailSendTemplateEngine engine = new SimpleEasyMailSendTemplateEngine();
+            // 使用空的变量映射来获取原始模板内容
+            return engine.processTemplateFile(filePath, new HashMap<>());
+        } catch (Exception e) {
+            log.debug("从文件系统加载模板失败: {}", filePath, e);
+        }
+        return null;
     }
 }

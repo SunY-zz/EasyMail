@@ -302,6 +302,27 @@ public class EasyMailRequest {
     }
 
     /**
+     * 便捷方法：创建HTML模板邮件（从文件路径）
+     * 注意：此方法创建的是文件路径模板，需要特殊处理
+     *
+     * @param to           收件人
+     * @param subject      主题
+     * @param templatePath HTML模板文件路径
+     * @param variables    模板变量
+     * @return EmailRequest实例
+     */
+    public static EasyMailRequest htmlTemplate(String to, String subject, String templatePath, Map<String, Object> variables) {
+        // 使用特殊前缀标识这是文件路径模板
+        String fileTemplateId = "file:" + templatePath;
+        return EasyMailRequest.builder()
+                .to(to)
+                .subject(subject)
+                .templateId(fileTemplateId)
+                .templateVariables(variables)
+                .build();
+    }
+
+    /**
      * 便捷方法：创建模板邮件
      *
      * @param to         收件人

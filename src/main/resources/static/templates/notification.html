@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统通知</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #17a2b8;
+        }
+        .header h1 {
+            color: #17a2b8;
+            margin: 0;
+            font-size: 26px;
+        }
+        .notification-type {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .type-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .type-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .type-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .type-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .content {
+            margin-bottom: 25px;
+        }
+        .message-box {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-left: 4px solid #17a2b8;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .details {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .details h4 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #17a2b8;
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        .action-button:hover {
+            background-color: #138496;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📢 系统通知</h1>
+        </div>
+        
+        <div class="notification-type type-${notificationType}">
+            ${notificationTypeText}
+        </div>
+        
+        <div class="content">
+            <p>尊敬的 <strong>${username}</strong>，</p>
+            
+            <div class="message-box">
+                <h3>${title}</h3>
+                <p>${message}</p>
+            </div>
+            
+            ${if:details}
+            <div class="details">
+                <h4>详细信息：</h4>
+                <p><strong>时间：</strong> ${timestamp}</p>
+                <p><strong>操作：</strong> ${operation}</p>
+                <p><strong>结果：</strong> ${result}</p>
+                ${if:additionalInfo}
+                <p><strong>备注：</strong> ${additionalInfo}</p>
+                ${endif}
+            </div>
+            ${endif}
+            
+            ${if:actionUrl}
+            <p>如需进一步操作，请点击下方按钮：</p>
+            <a href="${actionUrl}" class="action-button">${actionText}</a>
+            ${endif}
+            
+            <p>如有疑问，请联系我们的技术支持团队。</p>
+        </div>
+        
+        <div class="footer">
+            <p>此邮件由系统自动发送，请勿回复。</p>
+            <p>发送时间：${sendTime}</p>
+            <p>&copy; 2024 EasyMail 邮件服务. 保留所有权利。</p>
+        </div>
+    </div>
+</body>
+</html>

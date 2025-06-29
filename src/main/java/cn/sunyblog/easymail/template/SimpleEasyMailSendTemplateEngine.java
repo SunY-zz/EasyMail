@@ -1,9 +1,13 @@
 package cn.sunyblog.easymail.template;
 
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -161,6 +165,7 @@ public class SimpleEasyMailSendTemplateEngine implements EasyMailSendTemplateEng
 
     /**
      * 加载模板文件
+     * 支持从文件系统和classpath加载模板
      */
     private String loadTemplate(String templatePath) throws TemplateProcessingException {
         if (config.isCacheEnabled()) {
@@ -170,19 +175,64 @@ public class SimpleEasyMailSendTemplateEngine implements EasyMailSendTemplateEng
             }
         }
 
+        String content = null;
+
+        // 首先尝试从classpath:static/templates/加载
         try {
-            Path fullPath = Paths.get(config.getTemplateDirectory(), templatePath + config.getTemplateSuffix());
-            String content = new String(Files.readAllBytes(fullPath), java.nio.charset.Charset.forName(config.getEncoding()));
-
-            if (config.isCacheEnabled()) {
-                cacheTemplate(templatePath, content);
+            content = loadTemplateFromClasspath(templatePath);
+        } catch (Exception e) {
+            // 如果classpath加载失败，尝试从文件系统加载
+            try {
+                content = loadTemplateFromFileSystem(templatePath);
+            } catch (Exception ex) {
+                throw new TemplateProcessingException(
+                        "无法加载模板文件: " + templatePath + ". 已尝试从classpath:static/templates/和文件系统加载",
+                        ex, null, null, ENGINE_NAME);
             }
-
-            return content;
-        } catch (IOException e) {
-            throw new TemplateProcessingException(
-                    "无法加载模板文件: " + templatePath, e, null, null, ENGINE_NAME);
         }
+
+        if (config.isCacheEnabled()) {
+            cacheTemplate(templatePath, content);
+        }
+
+        return content;
+    }
+
+    /**
+     * 从classpath加载模板文件
+     */
+    private String loadTemplateFromClasspath(String templatePath) throws IOException {
+        // 确保模板路径以.html结尾
+        String fullTemplatePath = templatePath;
+        if (!templatePath.endsWith(".html")) {
+            fullTemplatePath = templatePath + ".html";
+        }
+
+        // 构建完整的classpath路径
+        String resourcePath = "static/templates/" + fullTemplatePath;
+
+        ClassPathResource resource = new ClassPathResource(resourcePath);
+        if (!resource.exists()) {
+            throw new IOException("模板文件不存在: " + resourcePath);
+        }
+
+        try (InputStream inputStream = resource.getInputStream()) {
+            byte[] buffer = new byte[1024];
+            ByteArrayOutputStream resultStream = new ByteArrayOutputStream();
+            int length;
+            while ((length = inputStream.read(buffer)) != -1) {
+                resultStream.write(buffer, 0, length);
+            }
+            return resultStream.toString(StandardCharsets.UTF_8.name());
+        }
+    }
+
+    /**
+     * 从文件系统加载模板文件（保持原有功能）
+     */
+    private String loadTemplateFromFileSystem(String templatePath) throws IOException {
+        Path fullPath = Paths.get(config.getTemplateDirectory(), templatePath + config.getTemplateSuffix());
+        return new String(Files.readAllBytes(fullPath), java.nio.charset.Charset.forName(config.getEncoding()));
     }
 
     /**

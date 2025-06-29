@@ -6,6 +6,7 @@ import cn.sunyblog.easymail.send.schedule.EasyMailScheduledTask;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -63,6 +64,32 @@ public interface EasyMailSenderService {
      */
     default EasyMailSendResult sendHtml(String to, String subject, String htmlContent) {
         return send(EasyMailRequest.htmlEmail(to, subject, htmlContent));
+    }
+
+    /**
+     * 使用HTML模板文件发送邮件
+     * 此方法会动态从文件系统加载HTML模板并创建临时模板
+     *
+     * @param to           收件人邮箱
+     * @param subject      邮件主题
+     * @param templatePath HTML模板文件路径（相对于classpath:static/templates/）
+     * @param variables    模板变量
+     * @return 发送结果
+     */
+    default EasyMailSendResult sendHtmlTemplate(String to, String subject, String templatePath, Map<String, Object> variables) {
+        return send(EasyMailRequest.htmlTemplate(to, subject, templatePath, variables));
+    }
+
+    /**
+     * 使用HTML模板文件发送邮件（无变量）
+     *
+     * @param to           收件人邮箱
+     * @param subject      邮件主题
+     * @param templatePath HTML模板文件路径（相对于classpath:static/templates/）
+     * @return 发送结果
+     */
+    default EasyMailSendResult sendHtmlTemplate(String to, String subject, String templatePath) {
+        return sendHtmlTemplate(to, subject, templatePath, new HashMap<>());
     }
 
     // ==================== 模板邮件发送方法 ====================

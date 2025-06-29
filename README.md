@@ -124,6 +124,8 @@ mail:
 
 ### 4. 发送邮件
 
+#### 基础邮件发送
+
 ```java
 @Service
 public class EmailService {
@@ -147,6 +149,118 @@ public class EmailService {
     }
 }
 ```
+
+#### HTML模板邮件发送（新功能）
+
+EasyMail 现在支持使用HTML模板文件发送邮件，将HTML内容与业务代码分离，提供更好的维护性和可读性。
+
+**1. 创建HTML模板文件**
+
+在 `src/main/resources/static/templates/` 目录下创建HTML模板文件：
+
+```html
+<!-- src/main/resources/static/templates/welcome.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>欢迎邮件</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { color: #007bff; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">欢迎加入我们！</h1>
+        <p>亲爱的 <strong>${username}</strong>，</p>
+        <p>感谢您注册我们的服务！您的邮箱是：${email}</p>
+        <p>注册时间：${registerTime}</p>
+        <a href="${activationUrl}">点击激活账户</a>
+    </div>
+</body>
+</html>
+```
+
+**2. 使用模板发送邮件**
+
+```java
+@Service
+public class EmailService {
+    
+    @Resource
+    private EasyMailSenderService easyMailSenderService;
+    
+    public void sendWelcomeEmail() {
+        // 准备模板变量
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("username", "张三");
+        variables.put("email", "zhangsan@example.com");
+        variables.put("registerTime", LocalDateTime.now().toString());
+        variables.put("activationUrl", "https://example.com/activate?token=abc123");
+        
+        // 使用HTML模板发送邮件
+        EasyMailSendResult result = easyMailSenderService.sendHtmlTemplate(
+            "zhangsan@example.com",
+            "欢迎加入我们！",
+            "welcome", // 模板文件名（不需要.html后缀）
+            variables
+        );
+        
+        if (result.isSuccess()) {
+            System.out.println("模板邮件发送成功！");
+        }
+    }
+    
+    // 发送验证码邮件
+    public void sendVerificationCode() {
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("username", "用户");
+        variables.put("verificationCode", "123456");
+        variables.put("expireMinutes", "5");
+        
+        easyMailSenderService.sendHtmlTemplate(
+            "user@example.com",
+            "您的验证码",
+            "verification-code",
+            variables
+        );
+    }
+}
+```
+
+**3. 内置模板示例**
+
+EasyMail 提供了三个内置模板示例：
+
+- `welcome.html` - 欢迎邮件模板
+- `verification-code.html` - 验证码邮件模板  
+- `notification.html` - 系统通知邮件模板
+
+**4. 模板语法支持**
+
+- 变量替换：`${variableName}`
+- 条件判断：`${if:condition}...${endif}`
+- 循环处理：`${foreach:list}...${endforeach}`
+- 默认值：`${variable:defaultValue}`
+
+**5. 模板文件位置**
+
+模板文件支持从以下位置加载（按优先级）：
+1. `classpath:static/templates/` （推荐）
+2. 文件系统路径（配置中指定）
+
+**6. 重要说明**
+
+⚠️ **模板ID与文件路径的区别**：
+- `sendHtmlTemplate()` 方法使用的是**文件路径**（如 "welcome"），会动态从文件系统加载HTML模板
+- 传统的 `templateEmail()` 方法使用的是**模板ID**，需要先通过 `EasyMailSendTemplateManager.registerTemplate()` 注册模板
+
+如果您遇到 "邮件模板不存在" 错误，请确认：
+1. 模板文件是否存在于 `src/main/resources/static/templates/` 目录
+2. 文件名是否正确（不包含.html后缀）
+3. 使用的是 `sendHtmlTemplate()` 而不是传统的模板方法
 
 ### 5. 监听邮件（可选）
 

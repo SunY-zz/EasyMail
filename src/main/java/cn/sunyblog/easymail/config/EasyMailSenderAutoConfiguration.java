@@ -8,7 +8,7 @@ import cn.sunyblog.easymail.send.monitor.EasyMailSendMonitor;
 import cn.sunyblog.easymail.send.strategy.BatchEasyMailSendStrategy;
 import cn.sunyblog.easymail.send.strategy.DefaultEasyMailSendStrategy;
 import cn.sunyblog.easymail.send.strategy.EasyMailSendStrategyManager;
-import cn.sunyblog.easymail.send.strategy.HighPriorityEasyMailSendStrategy;
+
 import cn.sunyblog.easymail.send.schedule.EasyMailScheduleManager;
 import cn.sunyblog.easymail.send.schedule.EasyMailTaskScheduler;
 import lombok.extern.slf4j.Slf4j;
@@ -106,16 +106,6 @@ public class EasyMailSenderAutoConfiguration {
         return strategy;
     }
 
-    /**
-     * 高优先级邮件发送策略
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    public HighPriorityEasyMailSendStrategy highPriorityEasyMailSendStrategy() {
-        HighPriorityEasyMailSendStrategy strategy = new HighPriorityEasyMailSendStrategy();
-        log.info("HighPriorityEmailSendStrategy 已创建");
-        return strategy;
-    }
 
     /**
      * 邮件发送策略管理器
