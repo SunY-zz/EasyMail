@@ -175,7 +175,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
      * 内部发送方法（核心实现）
      */
     private EasyMailSendResult sendInternal(List<String> toList, List<String> ccList, List<String> bccList,
-                                   String subject, String content, boolean isHtml, List<File> attachments) {
+                                            String subject, String content, boolean isHtml, List<File> attachments) {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -595,7 +595,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
                 .scheduleType(EasyMailScheduledTask.ScheduleType.CRON)
                 .cronExpression(cronExpression)
                 .build();
-        
+
         return scheduleManager.addTask(task);
     }
 
@@ -612,7 +612,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
                 .scheduleType(EasyMailScheduledTask.ScheduleType.DELAY)
                 .delayMillis(delayMillis)
                 .build();
-        
+
         return scheduleManager.addTask(task);
     }
 
@@ -629,7 +629,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
                 .scheduleType(EasyMailScheduledTask.ScheduleType.FIXED_RATE)
                 .fixedRateMillis(fixedRateMillis)
                 .build();
-        
+
         return scheduleManager.addTask(task);
     }
 
@@ -646,7 +646,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
                 .scheduleType(EasyMailScheduledTask.ScheduleType.FIXED_DELAY)
                 .fixedDelayMillis(fixedDelayMillis)
                 .build();
-        
+
         return scheduleManager.addTask(task);
     }
 
@@ -663,7 +663,7 @@ public class EasyMailSenderServiceImpl implements EasyMailSenderService {
                 .scheduleType(EasyMailScheduledTask.ScheduleType.AT_TIME)
                 .executeTime(executeTime)
                 .build();
-        
+
         return scheduleManager.addTask(task);
     }
 

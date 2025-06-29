@@ -116,7 +116,6 @@ public class EasyMailListenerAutoConfiguration {
     }
 
 
-
     /**
      * 默认的邮件监听器API实现
      * 如果用户没有提供自定义实现，则使用此默认实现
@@ -139,7 +138,5 @@ public class EasyMailListenerAutoConfiguration {
         };
     }
 
-
-    
 
 }

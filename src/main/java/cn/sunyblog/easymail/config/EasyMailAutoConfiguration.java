@@ -18,38 +18,39 @@ import java.util.Map;
 
 /**
  * EasyMail自动配置类
- * 
+ *
  * <p>此配置类是EasyMail框架的核心配置入口，通过{@link EnableEasyMail}注解导入。</p>
  * <p>根据注解配置自动导入相应的子配置类，并提供统一的配置管理。</p>
- * 
- * @author sunyblog
- * @since 1.0.0
+ *
+ * @author suny
  * @see EnableEasyMail
+ * @since 1.0.0
  */
 @Slf4j
 @Configuration
 @Import({
-    EasyMailListenerAutoConfiguration.class,
-    EasyMailSenderAutoConfiguration.class,
-    EasyMailConfigCompatibilityAutoConfiguration.class
+        EasyMailListenerAutoConfiguration.class,
+        EasyMailSenderAutoConfiguration.class,
+        EasyMailConfigCompatibilityAutoConfiguration.class,
+        EasyMailThreadPoolConfig.class
 })
 public class EasyMailAutoConfiguration implements ImportAware {
-    
+
     private AnnotationAttributes enableEasyMailAttributes;
-    
+
     @Autowired(required = false)
     private EasyMailService easyMailService;
-    
+
     @Override
     public void setImportMetadata(AnnotationMetadata importMetadata) {
         Map<String, Object> attributeMap = importMetadata.getAnnotationAttributes(EnableEasyMail.class.getName());
         this.enableEasyMailAttributes = AnnotationAttributes.fromMap(attributeMap);
     }
-    
+
     @PostConstruct
     public void init() {
         log.info("=== EasyMail 邮件服务框架启动 ===");
-        
+
         if (enableEasyMailAttributes != null) {
             boolean autoStart = enableEasyMailAttributes.getBoolean("autoStart");
             boolean enableSender = enableEasyMailAttributes.getBoolean("enableSender");
@@ -57,7 +58,7 @@ public class EasyMailAutoConfiguration implements ImportAware {
             boolean enableProcessor = enableEasyMailAttributes.getBoolean("enableProcessor");
             String[] scanPackages = enableEasyMailAttributes.getStringArray("scanPackages");
             String configPrefix = enableEasyMailAttributes.getString("configPrefix");
-            
+
             log.info("EasyMail配置信息:");
             log.info("  - 自动启动: {}", autoStart);
             log.info("  - 启用发送服务: {}", enableSender);
@@ -65,7 +66,7 @@ public class EasyMailAutoConfiguration implements ImportAware {
             log.info("  - 启用处理器: {}", enableProcessor);
             log.info("  - 扫描包路径: {}", scanPackages.length > 0 ? String.join(", ", scanPackages) : "默认扫描所有包");
             log.info("  - 配置前缀: {}", configPrefix);
-            
+
             // 如果启用自动启动且邮件服务可用，则启动邮件监听
             if (autoStart && easyMailService != null) {
                 try {
@@ -82,10 +83,10 @@ public class EasyMailAutoConfiguration implements ImportAware {
                 log.info("EasyMail邮件服务已配置但未自动启动，需要手动调用startMailMonitoring()方法");
             }
         }
-        
+
         log.info("=== EasyMail 邮件服务框架配置完成 ===");
     }
-    
+
     /**
      * 配置EasyMail启动器
      * 提供程序化的服务控制接口
@@ -95,31 +96,31 @@ public class EasyMailAutoConfiguration implements ImportAware {
     public EasyMailStarter easyMailStarter(EasyMailService easyMailService) {
         return new EasyMailStarter(easyMailService, enableEasyMailAttributes);
     }
-    
+
     /**
      * EasyMail启动器
      * 提供便捷的服务控制方法
      */
     public static class EasyMailStarter {
-        
+
         private final EasyMailService easyMailService;
         private final AnnotationAttributes attributes;
-        
+
         public EasyMailStarter(EasyMailService easyMailService, AnnotationAttributes attributes) {
             this.easyMailService = easyMailService;
             this.attributes = attributes;
         }
-        
+
         /**
          * 手动启动邮件服务
-         * 
+         *
          * @return 是否启动成功
          */
         public boolean start() {
             log.info("手动启动EasyMail邮件服务");
             return easyMailService.startMailMonitoring();
         }
-        
+
         /**
          * 停止邮件服务
          */
@@ -127,10 +128,10 @@ public class EasyMailAutoConfiguration implements ImportAware {
             log.info("停止EasyMail邮件服务");
             easyMailService.stopMailMonitoring();
         }
-        
+
         /**
          * 重启邮件服务
-         * 
+         *
          * @return 是否重启成功
          */
         public boolean restart() {
@@ -143,28 +144,28 @@ public class EasyMailAutoConfiguration implements ImportAware {
             }
             return start();
         }
-        
+
         /**
          * 检查服务状态
-         * 
+         *
          * @return 是否正在运行
          */
         public boolean isRunning() {
             return easyMailService.isMailServiceRunning();
         }
-        
+
         /**
          * 获取配置信息
-         * 
+         *
          * @return 配置属性
          */
         public AnnotationAttributes getConfiguration() {
             return attributes;
         }
-        
+
         /**
          * 获取邮件服务实例
-         * 
+         *
          * @return EasyMailService实例
          */
         public EasyMailService getEasyMailService() {

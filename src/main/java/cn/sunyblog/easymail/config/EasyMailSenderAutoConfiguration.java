@@ -30,7 +30,7 @@ import javax.annotation.Resource;
  * 邮件发送服务自动配置类
  * 自动配置所有邮件发送相关的组件
  *
- * @author sunyblog
+ * @author suny
  * @since 1.0.0
  */
 @Slf4j

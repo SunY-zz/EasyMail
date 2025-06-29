@@ -346,17 +346,17 @@ public class EasyMailRequest {
         EasyMailRequestBuilder builder = EasyMailRequest.builder()
                 .to(to)
                 .subject(subject);
-        
+
         if (isHtml) {
             builder.html(content);
         } else {
             builder.text(content);
         }
-        
+
         if (attachments != null) {
             attachments.forEach(builder::attachment);
         }
-        
+
         return builder.build();
     }
 
@@ -372,17 +372,17 @@ public class EasyMailRequest {
     public static EasyMailRequest toMultiple(List<String> toList, String subject, String content, boolean isHtml) {
         EasyMailRequestBuilder builder = EasyMailRequest.builder()
                 .subject(subject);
-        
+
         if (toList != null) {
             toList.forEach(builder::to);
         }
-        
+
         if (isHtml) {
             builder.html(content);
         } else {
             builder.text(content);
         }
-        
+
         return builder.build();
     }
 
@@ -399,10 +399,10 @@ public class EasyMailRequest {
      * @return EmailRequest实例
      */
     public static EasyMailRequest fullEmail(List<String> toList, List<String> ccList, List<String> bccList,
-                                           String subject, String content, boolean isHtml, List<File> attachments) {
+                                            String subject, String content, boolean isHtml, List<File> attachments) {
         EasyMailRequestBuilder builder = EasyMailRequest.builder()
                 .subject(subject);
-        
+
         if (toList != null) {
             toList.forEach(builder::to);
         }
@@ -412,17 +412,17 @@ public class EasyMailRequest {
         if (bccList != null) {
             bccList.forEach(builder::bcc);
         }
-        
+
         if (isHtml) {
             builder.html(content);
         } else {
             builder.text(content);
         }
-        
+
         if (attachments != null) {
             attachments.forEach(builder::attachment);
         }
-        
+
         return builder.build();
     }
 }

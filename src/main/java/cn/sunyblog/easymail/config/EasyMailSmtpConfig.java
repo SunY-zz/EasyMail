@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Configuration;
  * SMTP邮件发送配置
  */
 @Data
-@Configuration
 @ConfigurationProperties(prefix = "mail.smtp")
 public class EasyMailSmtpConfig {
     /**

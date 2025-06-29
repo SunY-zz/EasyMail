@@ -57,6 +57,35 @@
       "type": "cn.sunyblog.easymail.config.EasyMailSmtpConfig$Log",
       "sourceType": "cn.sunyblog.easymail.config.EasyMailSmtpConfig",
       "description": "SMTP日志配置"
+    },
+    {
+      "name": "mail.dynamic-thread-pool",
+      "type": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig",
+      "description": "EasyMail动态线程池配置"
+    },
+    {
+      "name": "mail.dynamic-thread-pool.basic",
+      "type": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Basic",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig",
+      "description": "动态线程池基本配置"
+    },
+    {
+      "name": "mail.dynamic-thread-pool.monitor",
+      "type": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Monitor",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig",
+      "description": "动态线程池监控配置"
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment",
+      "type": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig",
+      "description": "动态线程池调整策略配置"
+    },
+    {
+      "name": "mail.dynamic-thread-pool.safety",
+      "type": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Safety",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig",
+      "description": "动态线程池安全边界配置"
     }
   ],
   "properties": [
@@ -300,6 +329,181 @@
       "sourceType": "cn.sunyblog.easymail.config.EasyMailSmtpConfig$Log",
       "description": "是否启用SMTP调试日志",
       "defaultValue": false
+    },
+    {
+      "name": "mail.dynamic-thread-pool.enabled",
+      "type": "java.lang.Boolean",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig",
+      "description": "是否启用动态线程池",
+      "defaultValue": true
+    },
+    {
+      "name": "mail.dynamic-thread-pool.basic.core-pool-size",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Basic",
+      "description": "核心线程数",
+      "defaultValue": 5
+    },
+    {
+      "name": "mail.dynamic-thread-pool.basic.maximum-pool-size",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Basic",
+      "description": "最大线程数",
+      "defaultValue": 20
+    },
+    {
+      "name": "mail.dynamic-thread-pool.basic.queue-capacity",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Basic",
+      "description": "队列容量",
+      "defaultValue": 100
+    },
+    {
+      "name": "mail.dynamic-thread-pool.basic.keep-alive-time",
+      "type": "java.lang.Long",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Basic",
+      "description": "线程存活时间（秒）",
+      "defaultValue": 60
+    },
+    {
+      "name": "mail.dynamic-thread-pool.basic.thread-pool-name",
+      "type": "java.lang.String",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Basic",
+      "description": "线程池名称前缀",
+      "defaultValue": "EasyMail-DynamicPool"
+    },
+    {
+      "name": "mail.dynamic-thread-pool.monitor.interval",
+      "type": "java.lang.Long",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Monitor",
+      "description": "监控间隔（秒）",
+      "defaultValue": 30
+    },
+    {
+      "name": "mail.dynamic-thread-pool.monitor.enable-auto-adjustment",
+      "type": "java.lang.Boolean",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Monitor",
+      "description": "是否启用自动调整",
+      "defaultValue": true
+    },
+    {
+      "name": "mail.dynamic-thread-pool.monitor.enable-metrics-logging",
+      "type": "java.lang.Boolean",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Monitor",
+      "description": "是否启用指标日志",
+      "defaultValue": true
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment.strategy-class",
+      "type": "java.lang.String",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "description": "调整策略类名",
+      "defaultValue": "cn.sunyblog.easymail.dynamicThreadPool.strategy.DefaultAdjustmentStrategy"
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment.min-interval",
+      "type": "java.lang.Long",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "description": "最小调整间隔（秒）",
+      "defaultValue": 60
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment.max-per-hour",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "description": "每小时最大调整次数",
+      "defaultValue": 10
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment.queue-usage-expand-threshold",
+      "type": "java.lang.Double",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "description": "队列使用率扩容阈值",
+      "defaultValue": 0.8
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment.queue-usage-shrink-threshold",
+      "type": "java.lang.Double",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "description": "队列使用率缩容阈值",
+      "defaultValue": 0.3
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment.thread-activity-expand-threshold",
+      "type": "java.lang.Double",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "description": "线程池活跃度扩容阈值",
+      "defaultValue": 0.9
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment.thread-activity-shrink-threshold",
+      "type": "java.lang.Double",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "description": "线程池活跃度缩容阈值",
+      "defaultValue": 0.5
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment.task-wait-time-threshold",
+      "type": "java.lang.Long",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "description": "任务等待时间阈值（毫秒）",
+      "defaultValue": 1000
+    },
+    {
+      "name": "mail.dynamic-thread-pool.adjustment.shrink-duration",
+      "type": "java.lang.Long",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Adjustment",
+      "description": "缩容持续时间要求（秒）",
+      "defaultValue": 300
+    },
+    {
+      "name": "mail.dynamic-thread-pool.safety.min-core-pool-size",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Safety",
+      "description": "最小核心线程数",
+      "defaultValue": 1
+    },
+    {
+      "name": "mail.dynamic-thread-pool.safety.max-core-pool-size",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Safety",
+      "description": "最大核心线程数",
+      "defaultValue": 50
+    },
+    {
+      "name": "mail.dynamic-thread-pool.safety.min-maximum-pool-size",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Safety",
+      "description": "最小最大线程数",
+      "defaultValue": 2
+    },
+    {
+      "name": "mail.dynamic-thread-pool.safety.max-maximum-pool-size",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Safety",
+      "description": "最大最大线程数",
+      "defaultValue": 100
+    },
+    {
+      "name": "mail.dynamic-thread-pool.safety.min-queue-capacity",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Safety",
+      "description": "最小队列容量",
+      "defaultValue": 10
+    },
+    {
+      "name": "mail.dynamic-thread-pool.safety.max-queue-capacity",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Safety",
+      "description": "最大队列容量",
+      "defaultValue": 10000
+    },
+    {
+      "name": "mail.dynamic-thread-pool.safety.max-adjustment-ratio",
+      "type": "java.lang.Double",
+      "sourceType": "cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig$Safety",
+      "description": "单次调整最大幅度（百分比）",
+      "defaultValue": 0.5
     }
   ],
   "hints": [

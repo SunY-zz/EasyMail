@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import lombok.Data;
 
 @Data
-@Configuration
 @ConfigurationProperties(prefix = "mail.imap")
 public class EasyMailImapConfig {
     /**
@@ -114,13 +113,13 @@ public class EasyMailImapConfig {
          * 最大重试次数，默认20次
          */
         private int maxRetries = 20;
-        
+
         /**
          * 启动时处理策略
          */
         private StartupProcessStrategy startupProcessStrategy = StartupProcessStrategy.MARK_AS_READ_ONLY;
     }
-    
+
     /**
      * 启动时处理策略枚举
      */
@@ -129,12 +128,12 @@ public class EasyMailImapConfig {
          * 不处理旧邮件，只监听新邮件
          */
         IGNORE_EXISTING,
-        
+
         /**
          * 只标记旧邮件为已读，不处理内容
          */
         MARK_AS_READ_ONLY,
-        
+
         /**
          * 完全处理旧邮件（包括内容解析和业务处理）
          */

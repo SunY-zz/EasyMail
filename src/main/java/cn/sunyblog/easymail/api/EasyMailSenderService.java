@@ -216,8 +216,8 @@ public interface EasyMailSenderService {
     /**
      * 延迟发送邮件
      *
-     * @param request      邮件请求对象
-     * @param delayMillis  延迟时间（毫秒）
+     * @param request     邮件请求对象
+     * @param delayMillis 延迟时间（毫秒）
      * @return 定时任务ID
      */
     String sendDelayed(EasyMailRequest request, long delayMillis);
@@ -225,9 +225,9 @@ public interface EasyMailSenderService {
     /**
      * 延迟发送邮件（带任务名称）
      *
-     * @param request      邮件请求对象
-     * @param delayMillis  延迟时间（毫秒）
-     * @param taskName     任务名称
+     * @param request     邮件请求对象
+     * @param delayMillis 延迟时间（毫秒）
+     * @param taskName    任务名称
      * @return 定时任务ID
      */
     String sendDelayed(EasyMailRequest request, long delayMillis, String taskName);
@@ -235,8 +235,8 @@ public interface EasyMailSenderService {
     /**
      * 固定频率发送邮件
      *
-     * @param request           邮件请求对象
-     * @param fixedRateMillis   固定频率时间（毫秒）
+     * @param request         邮件请求对象
+     * @param fixedRateMillis 固定频率时间（毫秒）
      * @return 定时任务ID
      */
     String sendAtFixedRate(EasyMailRequest request, long fixedRateMillis);
@@ -244,9 +244,9 @@ public interface EasyMailSenderService {
     /**
      * 固定频率发送邮件（带任务名称）
      *
-     * @param request           邮件请求对象
-     * @param fixedRateMillis   固定频率时间（毫秒）
-     * @param taskName          任务名称
+     * @param request         邮件请求对象
+     * @param fixedRateMillis 固定频率时间（毫秒）
+     * @param taskName        任务名称
      * @return 定时任务ID
      */
     String sendAtFixedRate(EasyMailRequest request, long fixedRateMillis, String taskName);
@@ -254,8 +254,8 @@ public interface EasyMailSenderService {
     /**
      * 固定延迟发送邮件
      *
-     * @param request            邮件请求对象
-     * @param fixedDelayMillis   固定延迟时间（毫秒）
+     * @param request          邮件请求对象
+     * @param fixedDelayMillis 固定延迟时间（毫秒）
      * @return 定时任务ID
      */
     String sendWithFixedDelay(EasyMailRequest request, long fixedDelayMillis);
@@ -263,9 +263,9 @@ public interface EasyMailSenderService {
     /**
      * 固定延迟发送邮件（带任务名称）
      *
-     * @param request            邮件请求对象
-     * @param fixedDelayMillis   固定延迟时间（毫秒）
-     * @param taskName           任务名称
+     * @param request          邮件请求对象
+     * @param fixedDelayMillis 固定延迟时间（毫秒）
+     * @param taskName         任务名称
      * @return 定时任务ID
      */
     String sendWithFixedDelay(EasyMailRequest request, long fixedDelayMillis, String taskName);

@@ -9,4 +9,5 @@ cn.sunyblog.easymail.processor.config.AnnotationDrivenEasyMailProcessorAutoConfi
 org.springframework.boot.context.properties.EnableConfigurationProperties=\
   cn.sunyblog.easymail.config.EasyMailImapConfig,\
   cn.sunyblog.easymail.config.EasyMailSmtpConfig,\
+  cn.sunyblog.easymail.config.EasyMailDynamicThreadPoolConfig,\
   cn.sunyblog.easymail.processor.config.AnnotationDrivenEasyMailProcessorProperties

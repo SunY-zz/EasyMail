@@ -19,7 +19,7 @@
 // * <p>此示例展示了如何使用@EnableEasyMail注解来启用EasyMail邮件服务。</p>
 // * <p>只需要在Spring Boot主类上添加@EnableEasyMail注解，即可自动配置和启动邮件服务。</p>
 // *
-// * @author sunyblog
+// * @author suny
 // * @since 1.0.0
 // */
 //@Slf4j

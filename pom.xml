@@ -5,7 +5,7 @@
     <groupId>cn.sunyblog.easymail</groupId>
     <artifactId>easymail-spring-boot-starter</artifactId>
     <packaging>jar</packaging>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <name>EasyMail</name>
     <description>EasyMail - 高度自定义邮箱服务工具，提供邮件监听、处理和发送的完整解决方案</description>
     <url>https://github.com/sunyblog/easymail</url>
