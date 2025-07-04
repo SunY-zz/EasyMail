@@ -196,6 +196,15 @@ public class AnnotationDrivenEasyMailProcessorManager {
     }
 
     /**
+     * 检查是否有注册的处理器
+     *
+     * @return 是否有处理器
+     */
+    public boolean hasRegisteredHandlers() {
+        return !handlerRegistry.getAllHandlers().isEmpty();
+    }
+
+    /**
      * 提取验证码
      *
      * @param content 邮件内容

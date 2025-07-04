@@ -165,7 +165,7 @@
       "type": "java.lang.Integer",
       "sourceType": "cn.sunyblog.easymail.config.EasyMailImapConfig$Monitor",
       "description": "保持连接的间隔时间（秒）",
-      "defaultValue": 300
+      "defaultValue": 1
     },
     {
       "name": "mail.imap.monitor.reconnect-delay",

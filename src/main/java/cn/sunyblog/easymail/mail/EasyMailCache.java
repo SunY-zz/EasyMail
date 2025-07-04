@@ -43,18 +43,46 @@ public class EasyMailCache {
 
             // 如果没有Message-ID，则使用主题+发件人+时间的组合
             StringBuilder sb = new StringBuilder();
-            if (message.getSubject() != null) {
-                sb.append(message.getSubject());
+
+            // 安全获取主题
+            try {
+                String subject = message.getSubject();
+                if (subject != null) {
+                    sb.append(subject);
+                }
+            } catch (javax.mail.FolderClosedException e) {
+                // 文件夹已关闭，使用默认值
+                sb.append("folder_closed_subject");
+                log.debug("获取邮件主题时文件夹已关闭，使用默认值");
             }
 
-            Address[] addresses = message.getFrom();
-            if (addresses != null && addresses.length > 0) {
-                sb.append("_").append(addresses[0].toString());
+            // 安全获取发件人
+            try {
+                Address[] addresses = message.getFrom();
+                if (addresses != null && addresses.length > 0) {
+                    sb.append("_").append(addresses[0].toString());
+                }
+            } catch (javax.mail.FolderClosedException e) {
+                // 文件夹已关闭，使用默认值
+                sb.append("_folder_closed_from");
+                log.debug("获取邮件发件人时文件夹已关闭，使用默认值");
             }
 
-            sb.append("_").append(message.getReceivedDate());
+            // 安全获取接收时间
+            try {
+                sb.append("_").append(message.getReceivedDate());
+            } catch (javax.mail.FolderClosedException e) {
+                // 文件夹已关闭，使用当前时间
+                sb.append("_").append(System.currentTimeMillis());
+                log.debug("获取邮件接收时间时文件夹已关闭，使用当前时间");
+            }
 
             return sb.toString();
+        } catch (javax.mail.FolderClosedException e) {
+            // 文件夹已关闭，生成一个基于时间的唯一ID
+            String fallbackId = "folder_closed_" + System.currentTimeMillis() + "_" + message.hashCode();
+            log.debug("邮件文件夹已关闭，使用备用ID: {}", fallbackId);
+            return fallbackId;
         } catch (Exception e) {
             // 如果获取ID失败，抛出自定义异常
             throw EasyMailProcessException.parsingError("无法获取邮件ID", e);
@@ -70,6 +98,10 @@ public class EasyMailCache {
     public String getSubjectSafely(Message message) {
         try {
             return message.getSubject() != null ? message.getSubject() : "(无主题)";
+        } catch (javax.mail.FolderClosedException e) {
+            // 文件夹已关闭，返回默认主题
+            log.debug("获取邮件主题时文件夹已关闭，返回默认主题");
+            return "(文件夹已关闭)";
         } catch (MessagingException e) {
             throw EasyMailProcessException.parsingError("获取邮件主题异常", e);
         }

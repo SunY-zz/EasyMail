@@ -9,9 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
 import javax.mail.Address;
 import javax.mail.Flags;
+import javax.mail.Folder;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.io.IOException;
@@ -38,7 +38,7 @@ public class EasyMailProcessor {
     private EasyMailCache easyMailCache;
     @Autowired
     private EasyMailListenerApi easyMailListenerApi;
-    
+
     // 移除对EasyMailService的直接依赖，避免循环依赖
     // 使用volatile确保线程安全的状态检查
     private volatile boolean serviceRunning = true;
@@ -64,13 +64,13 @@ public class EasyMailProcessor {
             log.debug("邮件服务已关闭，跳过邮件处理");
             return false;
         }
-        
+
         // 检查当前线程是否被中断
         if (Thread.currentThread().isInterrupted()) {
             log.debug("处理线程已被中断，跳过邮件处理");
             return false;
         }
-        
+
         try {
             // 获取邮件ID
             String messageId = easyMailCache.getMessageId(message);
@@ -99,7 +99,7 @@ public class EasyMailProcessor {
             boolean processed = false;
 
             // 首先尝试使用注解驱动处理器
-            if (annotationProcessorManager != null) {
+            if (annotationProcessorManager != null && annotationProcessorManager.hasRegisteredHandlers()) {
                 try {
                     // 再次检查服务状态和线程中断状态
                     if (!serviceRunning || Thread.currentThread().isInterrupted()) {
@@ -111,7 +111,7 @@ public class EasyMailProcessor {
                     log.info("注解驱动邮件处理完成");
                 } catch (Exception e) {
                     // 如果是中断异常，直接返回
-                    if (e instanceof InterruptedException || Thread.currentThread().isInterrupted()) {
+                    if (Thread.currentThread().isInterrupted()) {
                         log.debug("注解驱动处理被中断");
                         Thread.currentThread().interrupt();
                         return false;
@@ -136,7 +136,7 @@ public class EasyMailProcessor {
                     log.info("函数式邮件处理结果: {}", result);
                 } catch (Exception e) {
                     // 如果是中断异常，直接返回
-                    if (e instanceof InterruptedException || Thread.currentThread().isInterrupted()) {
+                    if (Thread.currentThread().isInterrupted()) {
                         log.debug("函数式处理被中断");
                         Thread.currentThread().interrupt();
                         return false;
@@ -146,7 +146,7 @@ public class EasyMailProcessor {
                 }
             }
             // 其次使用接口方式
-            else if (!processed && easyMailListenerApi != null) {
+            if (!processed && easyMailListenerApi != null) {
                 try {
                     // 检查服务状态和线程中断状态
                     if (!serviceRunning || Thread.currentThread().isInterrupted()) {
@@ -159,7 +159,7 @@ public class EasyMailProcessor {
                     log.info("邮件处理器[{}]处理结果: {}", easyMailListenerApi.getProcessorName(), processed);
                 } catch (Exception e) {
                     // 如果是中断异常，直接返回
-                    if (e instanceof InterruptedException || Thread.currentThread().isInterrupted()) {
+                    if (Thread.currentThread().isInterrupted()) {
                         log.debug("接口处理被中断");
                         Thread.currentThread().interrupt();
                         return false;
@@ -169,7 +169,7 @@ public class EasyMailProcessor {
                 }
             }
             // 最后使用默认处理方法
-            else if (!processed) {
+            if (!processed) {
                 // 检查服务状态和线程中断状态
                 if (!serviceRunning || Thread.currentThread().isInterrupted()) {
                     log.debug("邮件服务已关闭或线程被中断，停止默认处理");
@@ -190,9 +190,20 @@ public class EasyMailProcessor {
                     log.debug("邮件服务已关闭，跳过标记邮件为已读");
                     return processed;
                 }
-                // 标记为已读
-                message.setFlag(Flags.Flag.SEEN, true);
-                log.debug("邮件已标记为已读");
+
+                // 检查邮件和文件夹状态
+                if (!message.isExpunged()) {
+                    Folder messageFolder = message.getFolder();
+                    if (messageFolder != null && messageFolder.isOpen()) {
+                        // 标记为已读
+                        message.setFlag(Flags.Flag.SEEN, true);
+                        log.debug("邮件已标记为已读");
+                    } else {
+                        log.warn("邮件文件夹未打开，无法标记邮件为已读");
+                    }
+                } else {
+                    log.warn("邮件对象无效或已删除，无法标记为已读");
+                }
             } catch (javax.mail.FolderClosedException ex) {
                 // 文件夹已关闭异常，通常发生在服务停止时
                 if (serviceRunning) {
@@ -283,7 +294,7 @@ public class EasyMailProcessor {
         this.easyMailProcessorFunction = processorFunction;
         log.info("已设置函数式邮件处理器");
     }
-    
+
     /**
      * 设置服务运行状态
      * 由EasyMailService调用来通知处理器服务状态变化
@@ -294,7 +305,7 @@ public class EasyMailProcessor {
         this.serviceRunning = running;
         log.debug("邮件处理器服务状态更新: {}", running ? "运行中" : "已停止");
     }
-    
+
     /**
      * 检查服务是否正在运行
      *

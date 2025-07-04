@@ -37,27 +37,46 @@ public class EasyMailContentParser {
         StringBuilder contentBuilder = new StringBuilder();
 
         // 获取邮件基本信息
-        String subject = message.getSubject() != null ? message.getSubject() : "(无主题)";
-
-        // 获取发件人
+        String subject = "(无主题)";
         String fromStr = "(未知发件人)";
-        Address[] fromAddresses = message.getFrom();
-        if (fromAddresses != null && fromAddresses.length > 0 && fromAddresses[0] != null) {
-            fromStr = decodeText(fromAddresses[0].toString());
+        Object content = null;
+        String contentType = null;
+
+        try {
+            subject = message.getSubject() != null ? decodeText(message.getSubject()) : "(无主题)";
+
+            // 获取发件人
+            Address[] fromAddresses = message.getFrom();
+            if (fromAddresses != null && fromAddresses.length > 0 && fromAddresses[0] != null) {
+                fromStr = decodeText(fromAddresses[0].toString());
+            }
+
+            // 处理邮件内容
+            content = message.getContent();
+            contentType = message.getContentType();
+
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法获取邮件基本信息: {}", e.getMessage());
+            parseInfoTime = System.currentTimeMillis();
+            parseContentTime = System.currentTimeMillis();
+            log.info("邮件处理详情 - 获取基本信息耗时: {}毫秒, 解析内容耗时: {}毫秒, 总耗时: {}毫秒",
+                    parseInfoTime - functionStartTime,
+                    parseContentTime - parseInfoTime,
+                    parseContentTime - functionStartTime);
+            return "(邮件文件夹已关闭，无法解析内容)";
+        } catch (Exception e) {
+            log.warn("获取邮件基本信息失败: {}", e.getMessage());
         }
 
         parseInfoTime = System.currentTimeMillis();
         log.info("处理邮件 - 主题: {}, 发件人: {}", subject, fromStr);
 
-        // 处理邮件内容
-        Object content = message.getContent();
-
         if (content instanceof Multipart) {
             Multipart multipart = (Multipart) content;
             contentBuilder.append(parseMultipart(multipart, saveDir));
         } else if (content instanceof String) {
-            String textContent = (String) content;
-            if (message.getContentType().toLowerCase().contains("html")) {
+            String textContent = decodeText((String) content); // 解码文本内容
+            if (contentType != null && contentType.toLowerCase().contains("html")) {
                 // 处理HTML内容
                 String plainText = extractTextFromHtml(textContent);
                 log.info("邮件HTML内容: {}", plainText);
@@ -99,42 +118,50 @@ public class EasyMailContentParser {
         for (int i = 0; i < count; i++) {
             BodyPart bodyPart = multipart.getBodyPart(i);
 
-            if (bodyPart.isMimeType("text/plain")) {
-                Object content = bodyPart.getContent();
-                String textContent = content instanceof String ? (String) content : "";
-                log.info("文本内容: {}", textContent);
-                contentBuilder.append(textContent);
-            } else if (bodyPart.isMimeType("text/html")) {
-                // 获取HTML内容并转换为纯文本
-                String htmlContent = bodyPart.getContent().toString();
-                String plainText = extractTextFromHtml(htmlContent);
-                log.info("HTML内容: {}", plainText);
-                contentBuilder.append(plainText);
-            } else if (bodyPart.isMimeType("multipart/*")) {
-                contentBuilder.append(parseMultipart((Multipart) bodyPart.getContent(), saveDir));
-            } else {
-                // 检查是否为附件（通过disposition或其他MIME类型）
-                String disposition = bodyPart.getDisposition();
-                if (disposition != null && (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT) || 
-                                          disposition.equalsIgnoreCase(BodyPart.INLINE))) {
-                    try {
-                        parseAttachment(bodyPart, saveDir);
-                    } catch (Exception e) {
-                        log.warn("附件解析失败，跳过该附件: {}", e.getMessage());
-                    }
-                } else if (bodyPart.isMimeType("application/*") || 
-                          bodyPart.isMimeType("image/*") || 
-                          bodyPart.isMimeType("audio/*") || 
-                          bodyPart.isMimeType("video/*")) {
-                    // 其他可能的附件类型
-                    try {
-                        parseAttachment(bodyPart, saveDir);
-                    } catch (Exception e) {
-                        log.warn("附件解析失败，跳过该附件: {}", e.getMessage());
-                    }
+            try {
+                if (bodyPart.isMimeType("text/plain")) {
+                    Object content = bodyPart.getContent();
+                    String textContent = content instanceof String ? decodeText((String) content) : "";
+                    log.info("文本内容: {}", textContent);
+                    contentBuilder.append(textContent);
+                } else if (bodyPart.isMimeType("text/html")) {
+                    // 获取HTML内容并转换为纯文本
+                    String htmlContent = decodeText(bodyPart.getContent().toString());
+                    String plainText = extractTextFromHtml(htmlContent);
+                    log.info("HTML内容: {}", plainText);
+                    contentBuilder.append(plainText);
+                } else if (bodyPart.isMimeType("multipart/*")) {
+                    contentBuilder.append(parseMultipart((Multipart) bodyPart.getContent(), saveDir));
                 } else {
-                    log.debug("跳过未知类型的邮件部分: {}", bodyPart.getContentType());
+                    // 检查是否为附件（通过disposition或其他MIME类型）
+                    String disposition = bodyPart.getDisposition();
+                    if (disposition != null && (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT) ||
+                            disposition.equalsIgnoreCase(BodyPart.INLINE))) {
+                        try {
+                            parseAttachment(bodyPart, saveDir);
+                        } catch (Exception e) {
+                            log.warn("附件解析失败，跳过该附件: {}", e.getMessage());
+                        }
+                    } else if (bodyPart.isMimeType("application/*") ||
+                            bodyPart.isMimeType("image/*") ||
+                            bodyPart.isMimeType("audio/*") ||
+                            bodyPart.isMimeType("video/*")) {
+                        // 其他可能的附件类型
+                        try {
+                            parseAttachment(bodyPart, saveDir);
+                        } catch (Exception e) {
+                            log.warn("附件解析失败，跳过该附件: {}", e.getMessage());
+                        }
+                    } else {
+                        log.debug("跳过未知类型的邮件部分: {}", bodyPart.getContentType());
+                    }
                 }
+            } catch (javax.mail.FolderClosedException e) {
+                log.warn("邮件文件夹已关闭，停止解析邮件内容部分 {}: {}", i, e.getMessage());
+                break; // 文件夹关闭时停止解析
+            } catch (Exception e) {
+                log.warn("解析邮件内容部分 {} 时发生错误，跳过该部分: {}", i, e.getMessage());
+                // 继续处理下一个部分
             }
         }
 
@@ -152,10 +179,10 @@ public class EasyMailContentParser {
         String disposition = bodyPart.getDisposition();
 
         // 检查是否为附件（ATTACHMENT或INLINE类型，或者有文件名的部分）
-        boolean isAttachment = (disposition != null && 
-                               (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT) || 
-                                disposition.equalsIgnoreCase(BodyPart.INLINE))) ||
-                              bodyPart.getFileName() != null;
+        boolean isAttachment = (disposition != null &&
+                (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT) ||
+                        disposition.equalsIgnoreCase(BodyPart.INLINE))) ||
+                bodyPart.getFileName() != null;
 
         if (isAttachment) {
             String fileName = bodyPart.getFileName();
@@ -201,13 +228,13 @@ public class EasyMailContentParser {
                         log.warn("附件 {} 超过大小限制 {}MB，停止保存", fileName, MAX_ATTACHMENT_SIZE / (1024 * 1024));
                         throw new EasyMailProcessException("附件超过大小限制: " + fileName);
                     }
-                    
+
                     // 检查处理时间限制
                     if (System.currentTimeMillis() - startTime > MAX_PROCESS_TIME) {
                         log.warn("附件 {} 保存超时，停止保存", fileName);
                         throw new EasyMailProcessException("附件保存超时: " + fileName);
                     }
-                    
+
                     os.write(buffer, 0, bytesRead);
                     total += bytesRead;
                 }
@@ -240,7 +267,7 @@ public class EasyMailContentParser {
         }
 
         // 去除HTML标签
-        String noHtml = html.replaceAll("\\<.*?\\>", "");
+        String noHtml = html.replaceAll("<.*?>", "");
 
         // 处理HTML实体
         String noHtmlEntities = noHtml.replaceAll("&nbsp;", " ")
@@ -264,14 +291,37 @@ public class EasyMailContentParser {
         if (text == null) return "(空文本)";
 
         try {
-            if (text.startsWith("=?GB") || text.startsWith("=?gb") ||
-                    text.startsWith("=?utf") || text.startsWith("=?UTF")) {
+            // 首先尝试使用MimeUtility解码
+            if (text.startsWith("=?")) {
                 return MimeUtility.decodeText(text);
-            } else {
-                return new String(text.getBytes("ISO8859_1"));
             }
+
+            // 检测是否包含中文字符或其他非ASCII字符
+            if (text.matches(".*[\u4e00-\u9fa5].*") || text.matches(".*[\\u0080-\\uFFFF].*")) {
+                // 已经是正确编码的文本，直接返回
+                return text;
+            }
+
+
+            // 尝试不同的编码方式
+            String[] encodings = {"UTF-8", "GBK", "GB2312", "ISO8859-1"};
+            for (String encoding : encodings) {
+                try {
+                    String decoded = new String(text.getBytes("ISO8859-1"), encoding);
+                    // 检查解码后是否包含中文字符，如果是则认为解码成功
+                    if (decoded.matches(".*[\u4e00-\u9fa5].*")) {
+                        return decoded;
+                    }
+                } catch (Exception ignored) {
+                    // 继续尝试下一种编码
+                }
+            }
+
+            // 如果所有编码都失败，返回原文本
+            return text;
         } catch (Exception e) {
-            throw EasyMailProcessException.parsingError("解码文本失败: " + text, e);
+            log.warn("解码文本失败，返回原文本: {}", text);
+            return text; // 返回原文本而不是抛出异常
         }
     }
 

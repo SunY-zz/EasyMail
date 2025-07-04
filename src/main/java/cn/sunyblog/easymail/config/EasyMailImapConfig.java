@@ -79,13 +79,13 @@ public class EasyMailImapConfig {
     @Data
     public static class Monitor {
         /**
-         * Idle状态超时时间，默认10秒
+         * Idle状态超时时间，默认10秒（减少延迟提高响应速度）
          */
         private int idleTimeout = 10000;
         /**
-         * 保持连接的间隔时间，默认60秒
+         * 保持连接的间隔时间，默认5秒（与idleTimeout保持一致，避免长时间等待）
          */
-        private int keepAliveInterval = 60;
+        private int keepAliveInterval = 5;
         /**
          * 重新连接的延迟时间，默认5秒
          */
@@ -93,7 +93,7 @@ public class EasyMailImapConfig {
         /**
          * 短延迟时间，默认5秒
          */
-        private int shortDelay = 3;
+        private int shortDelay = 5;
         /**
          * 长延迟时间，默认30秒
          */

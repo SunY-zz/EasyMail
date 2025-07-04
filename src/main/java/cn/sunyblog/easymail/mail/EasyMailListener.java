@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
 import javax.mail.*;
 import javax.mail.event.MessageCountAdapter;
 import javax.mail.event.MessageCountEvent;
@@ -25,6 +24,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author suny
  * @version 1.0
  * @description: 邮件监听服务   负责监听新邮件并触发处理
+ * <p>
+ * 针对网易企业邮箱IDLE监听优化说明：
+ * 1. IDLE退出后强制刷新文件夹状态，解决新邮件被忽略问题
+ * 2. 增加针对网易邮箱的特殊处理逻辑和延迟配置
+ * 3. 改进消息检索逻辑，直接处理SEARCH结果而不依赖消息编号范围
+ * 4. 添加IDLE失败时的降级机制，确保邮件监听的可靠性
+ * 5. 增强调试日志，便于问题排查和性能监控
  * @date 2025/05/12 16:23
  */
 @Slf4j
@@ -192,10 +198,10 @@ public class EasyMailListener {
                     log.debug("邮件监听服务已停止，忽略新邮件事件");
                     return;
                 }
-                
+
                 // IGNORE_EXISTING模式只在启动时忽略旧邮件，新邮件事件应该正常处理
                 // 因为messagesAdded是邮件服务器推送的新邮件事件，不是启动时的旧邮件
-                
+
                 processingEvent.set(true); // 设置标志位
                 try {
                     Message[] messages = e.getMessages();
@@ -209,7 +215,7 @@ public class EasyMailListener {
                             log.debug("邮件监听服务已停止，跳过新邮件处理");
                             break;
                         }
-                        
+
                         final Message finalMessage = message;
                         try {
                             noticeThreadPool.execute(() -> {
@@ -240,15 +246,15 @@ public class EasyMailListener {
      */
     private void processExistingUnreadEmails() {
         EasyMailImapConfig.StartupProcessStrategy strategy = easyMailImapConfig.getListener().getStartupProcessStrategy();
-        
+
         // 如果策略是忽略现有邮件，直接返回
         if (strategy == EasyMailImapConfig.StartupProcessStrategy.IGNORE_EXISTING) {
             log.info("配置为忽略现有未读邮件，跳过处理");
             return;
         }
-        
+
         log.debug("开始处理现有未读邮件，策略: {}", strategy);
-        
+
         switch (strategy) {
             case MARK_AS_READ_ONLY:
                 markUnreadEmailsAsRead();
@@ -262,43 +268,54 @@ public class EasyMailListener {
                 break;
         }
     }
-    
+
     /**
      * 只标记未读邮件为已读，不处理内容
      */
     private void markUnreadEmailsAsRead() {
         try {
             long startTime = System.currentTimeMillis();
-            
+
             // 查找未读邮件
             FlagTerm ft = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
-            Message[] messages = folder.search(ft);
-            
+            Message[] messages;
+            try {
+                messages = folder.search(ft);
+            } catch (javax.mail.FolderClosedException e) {
+                log.warn("文件夹已关闭，无法标记未读邮件为已读: {}", e.getMessage());
+                return;
+            }
+
             if (messages.length == 0) {
                 log.info("没有未读邮件需要标记");
                 return;
             }
-            
+
             log.info("开始标记{}封未读邮件为已读", messages.length);
-            
+
             // 批量标记为已读
             for (Message message : messages) {
                 try {
                     message.setFlag(Flags.Flag.SEEN, true);
+                } catch (javax.mail.FolderClosedException e) {
+                    log.warn("文件夹已关闭，无法标记邮件为已读: {}", e.getMessage());
+                    break; // 文件夹关闭时停止处理
                 } catch (Exception e) {
                     log.warn("标记邮件为已读失败: {}", e.getMessage());
                 }
             }
-            
+
             long endTime = System.currentTimeMillis();
-            log.info("批量标记{}封邮件为已读完成，总耗时: {}毫秒", 
+            log.info("批量标记{}封邮件为已读完成，总耗时: {}毫秒",
                     messages.length, endTime - startTime);
-                    
+
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("文件夹已关闭，标记未读邮件为已读操作终止: {}", e.getMessage());
         } catch (Exception e) {
             log.error("标记未读邮件为已读失败: {}", e.getMessage(), e);
         }
     }
-    
+
     /**
      * 完全处理未读邮件（包括内容解析和业务处理）
      */
@@ -308,7 +325,13 @@ public class EasyMailListener {
 
             // 查找未读邮件
             FlagTerm ft = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
-            Message[] messages = folder.search(ft);
+            Message[] messages;
+            try {
+                messages = folder.search(ft);
+            } catch (javax.mail.FolderClosedException e) {
+                log.warn("文件夹已关闭，无法处理未读邮件: {}", e.getMessage());
+                return;
+            }
 
             if (messages.length == 0) {
                 log.info("没有未读邮件");
@@ -329,7 +352,7 @@ public class EasyMailListener {
                     latch.countDown(); // 减少计数器
                     continue;
                 }
-                
+
                 final Message finalMessage = message;
                 try {
                     noticeThreadPool.execute(() -> {
@@ -371,6 +394,8 @@ public class EasyMailListener {
                     processedCount[0],
                     endTime - startTime,
                     processedCount[0] > 0 ? (endTime - startTime) / processedCount[0] : 0);
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("文件夹已关闭，处理未读邮件操作终止: {}", e.getMessage());
         } catch (Exception e) {
             EasyMailProcessException processEx = EasyMailProcessException.processingError("处理未读邮件失败", e);
             log.error(processEx.getFullErrorMessage(), processEx);
@@ -385,7 +410,7 @@ public class EasyMailListener {
     private void startMonitorThread(EasyMailServerConnector serverConnector) {
         monitorThread = new Thread(() -> {
             log.debug("邮件监听线程已启动");
-            
+
             // 根据配置策略处理现有未读邮件
             EasyMailImapConfig.StartupProcessStrategy strategy = easyMailImapConfig.getListener().getStartupProcessStrategy();
             if (strategy != EasyMailImapConfig.StartupProcessStrategy.IGNORE_EXISTING) {
@@ -393,7 +418,7 @@ public class EasyMailListener {
             } else {
                 log.info("IGNORE_EXISTING模式：跳过处理现有未读邮件，仅监听新邮件");
             }
-            
+
             // 添加一个短暂延迟，避免与初始化时的事件检测冲突
             try {
                 TimeUnit.MILLISECONDS.sleep(500);
@@ -417,11 +442,16 @@ public class EasyMailListener {
                         // 使用混合模式：先尝试IDLE，如果不支持或失败则使用轮询
                         // 检查服务器是否支持IDLE命令 (通过协议能力检查)
                         boolean supportsIdle = false;
+                        boolean isIdleMode = false;
                         try {
                             // 获取IMAP协议对象并检查能力
                             if (imapFolder.getStore() instanceof IMAPStore) {
                                 IMAPStore imapStore = (IMAPStore) imapFolder.getStore();
                                 supportsIdle = imapStore.hasCapability("IDLE");
+                                isIdleMode = supportsIdle;
+                                if (supportsIdle) {
+                                    log.debug("检测到IDLE支持，将使用优化的IDLE策略");
+                                }
                             }
                         } catch (Exception e) {
                             EasyMailException connectionEx = EasyMailExceptionHandler.wrapException(e,
@@ -433,16 +463,111 @@ public class EasyMailListener {
                             // IDLE命令会阻塞，直到有新邮件或超时
                             log.debug("进入IDLE模式");
                             try {
-                                // 修改：使用较短的超时时间
-                                imapFolder.idle(false);
+                                // 使用标准IDLE配置
+                                //log.info("进入 imapFolder.idle(true);方法中");
+                                imapFolder.idle(true);
+                                //log.info("退出 imapFolder.idle(true);");
                             } catch (MessagingException e) {
                                 EasyMailException connectionEx = EasyMailExceptionHandler.wrapMessagingException(e,
                                         "IDLE命令执行失败");
                                 log.warn(connectionEx.getFullErrorMessage());
+
+                                // IDLE失败时降级到轮询模式
+                                log.info("IDLE失败，降级到轮询模式");
+                                try {
+                                    TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getShortDelay());
+                                } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                    return;
+                                }
+                                checkNewMessages();
+                                continue; // 跳过后续IDLE处理，直接进入下一轮循环
                             }
                             log.debug("退出IDLE模式");
+
+                            // IDLE模式优化：IDLE退出后轻量级刷新文件夹状态
+                            try {
+                                // IDLE模式：使用轻量级刷新策略，避免频繁重新打开文件夹
+                                log.debug("IDLE模式：执行轻量级文件夹刷新");
+
+                                // 检查连接状态
+                                if (store == null || !store.isConnected()) {
+                                    log.warn("IDLE模式：Store连接已断开，跳过刷新");
+                                    continue;
+                                }
+
+                                // 只进行轻量级刷新，不重新打开文件夹
+                                int messageCount = imapFolder.getMessageCount();
+                                log.debug("IDLE模式轻量级刷新：当前邮件数={}", messageCount);
+
+                                // 减少延迟提高响应速度
+                                TimeUnit.MILLISECONDS.sleep(50);
+                            } catch (FolderClosedException fce) {
+                                log.warn("刷新时文件夹连接断开: {}", fce.getMessage());
+                                try {
+                                    // 检查store连接
+                                    if (store != null && store.isConnected()) {
+                                        imapFolder.open(Folder.READ_WRITE);
+                                        setupMessageListener();
+                                        log.info("文件夹重新连接成功");
+                                    } else {
+                                        log.error("Store连接已断开，无法重新打开文件夹");
+                                        continue;
+                                    }
+                                } catch (Exception reopenEx) {
+                                    log.error("重新打开文件夹失败: {}", reopenEx.getMessage());
+                                    continue;
+                                }
+                            } catch (Exception refreshEx) {
+                                log.warn("刷新文件夹状态失败: {}", refreshEx.getMessage());
+                                // 如果刷新失败，尝试重新打开文件夹
+                                try {
+                                    if (!imapFolder.isOpen()) {
+                                        imapFolder.open(Folder.READ_WRITE);
+                                        setupMessageListener();
+                                    }
+                                } catch (Exception reopenEx) {
+                                    log.error("重新打开文件夹失败: {}", reopenEx.getMessage());
+                                }
+                            }
+
+                            // IDLE退出后强制同步文件夹状态，解决邮件编号超出范围问题
+                            try {
+                                if (imapFolder.isOpen()) {
+                                    // 关闭并重新打开文件夹，确保完全同步
+                                    imapFolder.close(false);
+                                    imapFolder.open(Folder.READ_WRITE);
+                                    setupMessageListener();
+                                    int messageCount = imapFolder.getMessageCount();
+                                    log.debug("IDLE退出后已重新打开文件夹并同步状态，当前邮件数: {}", messageCount);
+                                }
+                            } catch (Exception syncEx) {
+                                log.warn("IDLE退出后同步文件夹状态失败: {}", syncEx.getMessage());
+                                // 如果同步失败，尝试简单的重新打开
+                                try {
+                                    if (!imapFolder.isOpen()) {
+                                        imapFolder.open(Folder.READ_WRITE);
+                                        setupMessageListener();
+                                    }
+                                } catch (Exception reopenEx) {
+                                    log.error("重新打开文件夹失败: {}", reopenEx.getMessage());
+                                }
+                            }
+
                             // 在IDLE之后，主动检查一次新邮件
                             checkNewMessages();
+
+                            // IDLE模式下添加快速检查
+                            if (isIdleMode) {
+                                try {
+                                    TimeUnit.MILLISECONDS.sleep(50); // 大幅减少延迟
+                                    // 再次检查，确保没有遗漏的邮件
+                                    checkNewMessages();
+                                } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                    return;
+                                }
+                            }
                         } else {
                             // 如果不支持IDLE，使用轮询
                             //log.warn("当前邮件服务不支持IDLE模式，使用轮询方式");
@@ -476,12 +601,12 @@ public class EasyMailListener {
                             isRunning.set(false);
                             break;
                         }
-                        
+
                         EasyMailException connectionEx = EasyMailExceptionHandler.wrapException(reconnectEx,
                                 "重新打开文件夹失败");
                         log.error(connectionEx.getFullErrorMessage(), connectionEx);
                         try {
-                            TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getReconnectDelay());
+                            TimeUnit.SECONDS.sleep(1); // 快速重连，减少延迟
                         } catch (InterruptedException ie) {
                             Thread.currentThread().interrupt();
                             log.warn("线程被中断");
@@ -494,11 +619,11 @@ public class EasyMailListener {
                         isRunning.set(false);
                         break;
                     }
-                    
+
                     EasyMailException connectionEx = EasyMailExceptionHandler.wrapMessagingException(me,
                             "邮件服务异常");
                     log.error(connectionEx.getFullErrorMessage(), connectionEx);
-                    
+
                     // 只有在非认证失败的情况下才尝试重连
                     try {
                         // 尝试重新连接
@@ -506,7 +631,7 @@ public class EasyMailListener {
                         // 重新设置监听器
                         setupMessageListener();
                         log.info("邮件服务器重连成功，已重新设置监听器");
-                        TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getReconnectDelay());
+                        TimeUnit.SECONDS.sleep(1); // 快速重连，减少延迟
                     } catch (Exception reconnectEx) {
                         // 检查重连异常是否也是认证失败
                         if (isAuthenticationFailure(reconnectEx)) {
@@ -514,7 +639,7 @@ public class EasyMailListener {
                             isRunning.set(false);
                             break;
                         }
-                        
+
                         EasyMailException reconnectConnectionEx = EasyMailExceptionHandler.wrapException(reconnectEx,
                                 "重新连接失败");
                         log.error(reconnectConnectionEx.getFullErrorMessage(), reconnectConnectionEx);
@@ -529,7 +654,7 @@ public class EasyMailListener {
                     EasyMailProcessException processEx = EasyMailProcessException.processingError("邮件监听异常", e);
                     log.error(processEx.getFullErrorMessage(), processEx);
                     try {
-                        TimeUnit.SECONDS.sleep(easyMailImapConfig.getMonitor().getReconnectDelay());
+                        TimeUnit.SECONDS.sleep(1); // 快速重连，减少延迟
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         log.warn("线程被中断");
@@ -553,9 +678,26 @@ public class EasyMailListener {
                 try {
                     if (store != null && store.isConnected() &&
                             folder != null && folder.isOpen()) {
-                        // 发送NOOP命令保持连接活跃
-                        folder.getMessageCount();
-                        log.debug("发送保活信号");
+                        // 发送NOOP命令中断IDLE并保持连接活跃
+                        if (folder instanceof IMAPFolder) {
+                            IMAPFolder imapFolder = (IMAPFolder) folder;
+                            try {
+                                // 使用NOOP命令中断IDLE，这是标准做法
+                                imapFolder.doCommand(protocol -> {
+                                    protocol.simpleCommand("NOOP", null);
+                                    return null;
+                                });
+                                log.debug("发送NOOP命令中断IDLE");
+                            } catch (Exception e) {
+                                // 如果NOOP失败，降级到getMessageCount
+                                folder.getMessageCount();
+                                log.debug("NOOP失败，使用getMessageCount保活");
+                            }
+                        } else {
+                            // 非IMAP文件夹使用标准方法
+                            folder.getMessageCount();
+                            log.debug("发送保活信号");
+                        }
                     } else {
                         log.warn("保活线程检测到连接断开，等待主线程重连");
                         // 保活线程不直接重连，避免与主线程冲突
@@ -578,7 +720,7 @@ public class EasyMailListener {
                             isRunning.set(false);
                             break;
                         }
-                        
+
                         // 对于其他异常，只记录debug级别日志，避免过多错误日志
                         log.debug("保活线程异常: {}", e.getMessage());
                         try {
@@ -638,19 +780,233 @@ public class EasyMailListener {
                 setupMessageListener();
             }
 
+            // IDLE模式优化：改进消息检索逻辑
+            // 检测当前是否为IDLE模式
+            boolean isIdleMode = folder instanceof IMAPFolder &&
+                    folder.getStore() instanceof IMAPStore &&
+                    ((IMAPStore) folder.getStore()).hasCapability("IDLE");
+
+            // 先强制刷新文件夹状态，确保获取最新的邮件信息
+            try {
+                // 检查连接状态
+                if (store == null || !store.isConnected()) {
+                    log.warn("Store连接已断开，跳过邮件检查");
+                    return;
+                }
+
+                if (isIdleMode && folder instanceof IMAPFolder) {
+                    // IDLE模式：使用轻量级刷新策略，避免频繁重新打开文件夹
+                    IMAPFolder imapFolder = (IMAPFolder) folder;
+
+                    // 只进行轻量级刷新，不重新打开文件夹
+                    int messageCount = imapFolder.getMessageCount();
+                    log.debug("IDLE模式轻量级刷新：当前邮件数={}", messageCount);
+
+                    // 减少延迟提高响应速度
+                    Thread.sleep(100);
+                } else {
+                    // 轮询模式：标准刷新
+                    folder.getMessageCount(); // 强制同步文件夹状态
+                    log.debug("已刷新文件夹状态，当前邮件总数: {}", folder.getMessageCount());
+                }
+            } catch (FolderClosedException fce) {
+                log.warn("轮询刷新时文件夹连接断开: {}", fce.getMessage());
+                try {
+                    // 检查store连接
+                    if (store != null && store.isConnected()) {
+                        folder.open(Folder.READ_WRITE);
+                        setupMessageListener();
+                        log.info("轮询时文件夹重新连接成功");
+                    } else {
+                        log.error("Store连接已断开，无法重新打开文件夹");
+                        return;
+                    }
+                } catch (Exception reopenEx) {
+                    log.error("轮询时重新打开文件夹失败: {}", reopenEx.getMessage());
+                    return;
+                }
+            } catch (Exception e) {
+                log.debug("刷新文件夹状态时出现异常: {}", e.getMessage());
+                // 如果刷新失败，尝试重新打开文件夹
+                try {
+                    if (!folder.isOpen()) {
+                        folder.open(Folder.READ_WRITE);
+                        setupMessageListener();
+                    }
+                } catch (Exception reopenEx) {
+                    log.warn("重新打开文件夹失败: {}", reopenEx.getMessage());
+                }
+            }
+
             // 获取未读邮件
             FlagTerm ft = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
-            Message[] messages = folder.search(ft);
+            Message[] messages;
+            try {
+                messages = folder.search(ft);
+            } catch (javax.mail.FolderClosedException e) {
+                log.warn("文件夹已关闭，无法搜索未读邮件: {}", e.getMessage());
+                try {
+                    if (store != null && store.isConnected()) {
+                        folder.open(Folder.READ_WRITE);
+                        setupMessageListener();
+                        messages = folder.search(ft);
+                        log.info("文件夹重新连接成功，继续搜索未读邮件");
+                    } else {
+                        log.error("Store连接已断开，无法重新搜索未读邮件");
+                        return;
+                    }
+                } catch (Exception reopenEx) {
+                    log.error("重新打开文件夹后搜索失败: {}", reopenEx.getMessage());
+                    return;
+                }
+            }
+
+            // IDLE模式优化：如果SEARCH返回空结果但可能有新邮件，尝试直接获取最新邮件
+            if (messages.length == 0 && isIdleMode && folder instanceof IMAPFolder) {
+                try {
+                    // 再次检查连接状态
+                    if (store == null || !store.isConnected()) {
+                        log.warn("IDLE模式：Store连接已断开，跳过直接检查");
+                    } else {
+                        IMAPFolder imapFolder = (IMAPFolder) folder;
+
+                        // 轻量级刷新文件夹状态
+                        int totalCount = imapFolder.getMessageCount();
+                        Thread.sleep(100);
+
+                        if (totalCount > 0) {
+                            log.debug("IDLE模式：SEARCH返回空，轻量级检查最后3封邮件，总邮件数: {}", totalCount);
+                            // 检查最后几封邮件是否为未读
+                            int checkCount = Math.min(3, totalCount); // 减少检查数量提高效率
+                            Message[] recentMessages = imapFolder.getMessages(totalCount - checkCount + 1, totalCount);
+
+                            java.util.List<Message> unreadMessages = new java.util.ArrayList<>();
+                            for (Message msg : recentMessages) {
+                                try {
+                                    // 确保消息有效且未被删除
+                                    if (msg != null && !msg.isExpunged() && !msg.isSet(Flags.Flag.SEEN)) {
+                                        unreadMessages.add(msg);
+                                        log.debug("IDLE模式：发现未读邮件: {}", msg.getMessageNumber());
+                                    }
+                                } catch (Exception msgEx) {
+                                    log.debug("IDLE模式：检查邮件状态失败: {}", msgEx.getMessage());
+                                }
+                            }
+
+                            if (!unreadMessages.isEmpty()) {
+                                messages = unreadMessages.toArray(new Message[0]);
+                                log.info("IDLE模式：通过轻量级检查发现 {} 封未读邮件", messages.length);
+                            }
+                        }
+                    }
+                } catch (FolderClosedException fce) {
+                    log.warn("IDLE模式：直接检查时文件夹连接断开: {}", fce.getMessage());
+                    try {
+                        if (store != null && store.isConnected()) {
+                            folder.open(Folder.READ_WRITE);
+                            setupMessageListener();
+                            log.info("IDLE模式：直接检查时文件夹重新连接成功");
+                        }
+                    } catch (Exception reopenEx) {
+                        log.error("IDLE模式：直接检查时重新打开文件夹失败: {}", reopenEx.getMessage());
+                    }
+                } catch (Exception directEx) {
+                    log.debug("IDLE模式：直接获取最新邮件失败: {}", directEx.getMessage());
+                }
+            }
 
             if (messages.length > 0) {
                 log.debug("轮询检测到{}封未读邮件", messages.length);
 
+                // 记录邮件编号范围用于调试
+                int minMsgNum = Integer.MAX_VALUE;
+                int maxMsgNum = Integer.MIN_VALUE;
+                for (Message msg : messages) {
+                    int msgNum = msg.getMessageNumber();
+                    minMsgNum = Math.min(minMsgNum, msgNum);
+                    maxMsgNum = Math.max(maxMsgNum, msgNum);
+                }
+                log.debug("未读邮件编号范围: {} - {}, 文件夹总邮件数: {}",
+                        minMsgNum, maxMsgNum, folder.getMessageCount());
+
                 // 检查启动处理策略
                 EasyMailImapConfig.StartupProcessStrategy strategy = easyMailImapConfig.getListener().getStartupProcessStrategy();
-                
+
                 for (Message message : messages) {
+                    // IDLE模式优化：增加消息有效性检查和连接状态确保
+                    try {
+                        // 首先检查store和folder的连接状态
+                        if (store == null || !store.isConnected()) {
+                            log.warn("[IDLE优化] Store连接已断开，跳过此邮件");
+                            continue;
+                        }
+
+                        // 确保文件夹仍然打开
+                        if (!folder.isOpen()) {
+                            log.warn("[IDLE优化] 文件夹已关闭，重新打开");
+                            folder.open(Folder.READ_WRITE);
+                            setupMessageListener();
+                        }
+
+                        // 验证消息对象本身是否为null
+                        if (message == null) {
+                            log.warn("[IDLE优化] 消息对象为null，跳过");
+                            continue;
+                        }
+
+                        // 验证消息是否仍然有效（先检查是否被删除）
+                        if (message.isExpunged()) {
+                            log.warn("[IDLE优化] 跳过已删除的邮件");
+                            continue;
+                        }
+
+                        // 预先检查消息是否有效，避免后续处理时出现异常
+                        int msgNumber = message.getMessageNumber();
+                        if (msgNumber <= 0) {
+                            log.warn("[IDLE优化] 无效的消息编号: {}", msgNumber);
+                            continue;
+                        }
+
+                        // 尝试获取消息主题来验证消息完整性
+                        String subject = null;
+                        try {
+                            subject = message.getSubject();
+                        } catch (Exception subjectEx) {
+                            log.warn("[IDLE优化] 无法获取消息主题，可能消息已损坏: {}", subjectEx.getMessage());
+                            continue;
+                        }
+
+                        log.debug("[IDLE优化] 验证邮件有效性 - 编号: {}, 主题: {}",
+                                msgNumber, subject != null ? subject.substring(0, Math.min(subject.length(), 30)) + "..." : "无主题");
+
+                    } catch (FolderClosedException fce) {
+                        log.warn("[IDLE优化] 文件夹连接已断开，尝试重新连接: {}", fce.getMessage());
+                        try {
+                            // 检查store连接状态
+                            if (store == null || !store.isConnected()) {
+                                log.error("[IDLE优化] Store连接已断开，无法重新连接文件夹");
+                                continue;
+                            }
+
+                            // 重新打开文件夹
+                            folder.open(Folder.READ_WRITE);
+                            setupMessageListener();
+
+                            // 重新获取消息
+                            int originalMsgNum = message.getMessageNumber();
+                            message = folder.getMessage(originalMsgNum);
+                            log.info("[IDLE优化] 重新连接成功，继续处理邮件: {}", originalMsgNum);
+                        } catch (Exception reconnectEx) {
+                            log.error("[IDLE优化] 重新连接失败，跳过此邮件: {}", reconnectEx.getMessage());
+                            continue;
+                        }
+                    } catch (Exception msgEx) {
+                        log.warn("[IDLE优化] 跳过无效邮件消息: {}", msgEx.getMessage());
+                        continue;
+                    }
+
                     String messageId = easyMailCache.getMessageId(message);
-                    
+
                     // 如果是IGNORE_EXISTING模式，只处理缓存中没有记录的邮件（真正的新邮件）
                     if (strategy == EasyMailImapConfig.StartupProcessStrategy.IGNORE_EXISTING) {
                         // 在IGNORE_EXISTING模式下，只有通过事件监听器接收到的新邮件才会被处理
@@ -666,14 +1022,16 @@ public class EasyMailListener {
                             continue;
                         }
                     }
-                    
+
                     // 非IGNORE_EXISTING模式的正常处理逻辑
                     if (!easyMailCache.shouldProcessMessage(messageId)) {
                         log.debug("邮件已处理，跳过轮询处理: {}", messageId);
                         continue;
                     }
 
-                    noticeThreadPool.execute(() -> easyMailProcessor.processMessage(message));
+                    // 创建final变量以在lambda中使用
+                    final Message finalMessage = message;
+                    noticeThreadPool.execute(() -> easyMailProcessor.processMessage(finalMessage));
                 }
             } else {
                 log.debug("轮询检查：没有新邮件");
@@ -711,14 +1069,14 @@ public class EasyMailListener {
         if (message == null) {
             return false;
         }
-        return message.contains("Unsafe Login") || 
-               message.contains("authentication failed") ||
-               message.contains("LOGIN failed") ||
-               message.contains("Invalid credentials") ||
-               message.contains("AUTH") ||
-               message.contains("AUTHENTICATE");
+        return message.contains("Unsafe Login") ||
+                message.contains("authentication failed") ||
+                message.contains("LOGIN failed") ||
+                message.contains("Invalid credentials") ||
+                message.contains("AUTH") ||
+                message.contains("AUTHENTICATE");
     }
-    
+
     /**
      * 检查是否为认证失败异常（MessagingException版本）
      */
@@ -741,13 +1099,13 @@ public class EasyMailListener {
         if (noticeThreadPool != null && !noticeThreadPool.isShutdown()) {
             //log.info("正在关闭邮件处理线程池");
             noticeThreadPool.shutdown(); // 不再接受新任务
-            
+
             try {
                 // 先等待3秒让正在执行的任务完成
                 if (!noticeThreadPool.awaitTermination(3, TimeUnit.SECONDS)) {
                     log.warn("邮件处理任务未能在3秒内完成，强制关闭线程池");
                     noticeThreadPool.shutdownNow(); // 强制关闭
-                    
+
                     // 再等待1秒确保线程被中断
                     if (!noticeThreadPool.awaitTermination(1, TimeUnit.SECONDS)) {
                         log.error("无法强制关闭邮件处理线程池");

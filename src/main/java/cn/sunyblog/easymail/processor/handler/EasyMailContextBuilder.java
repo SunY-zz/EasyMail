@@ -101,30 +101,69 @@ public class EasyMailContextBuilder {
     /**
      * 解析基本信息
      */
-    private void parseBasicInfo(Message message, EasyMailContext.EasyMailContextBuilder builder)
-            throws MessagingException {
+    private void parseBasicInfo(Message message, EasyMailContext.EasyMailContextBuilder builder) {
 
-        // 主题
-        String subject = message.getSubject();
-        builder.subject(subject != null ? subject : "(无主题)");
-
-        // 发件人
-        Address[] fromAddresses = message.getFrom();
-        if (fromAddresses != null && fromAddresses.length > 0) {
-            String from = contentParser.decodeText(fromAddresses[0].toString());
-            builder.from(from);
-        } else {
-            builder.from("(未知发件人)");
+        try {
+            // 主题
+            String subject = message.getSubject();
+            builder.subject(subject != null ? contentParser.decodeText(subject) : "(无主题)");
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法获取主题: {}", e.getMessage());
+            builder.subject("[文件夹已关闭]");
+        } catch (Exception e) {
+            log.warn("获取邮件主题失败: {}", e.getMessage());
+            builder.subject("(主题获取失败)");
         }
 
-        // 收件人
-        builder.to(parseAddresses(message.getRecipients(Message.RecipientType.TO)));
+        try {
+            // 发件人
+            Address[] fromAddresses = message.getFrom();
+            if (fromAddresses != null && fromAddresses.length > 0) {
+                String from = contentParser.decodeText(fromAddresses[0].toString());
+                builder.from(from);
+            } else {
+                builder.from("(未知发件人)");
+            }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法获取发件人: {}", e.getMessage());
+            builder.from("unknown@folder.closed");
+        } catch (Exception e) {
+            log.warn("获取发件人失败: {}", e.getMessage());
+            builder.from("(发件人获取失败)");
+        }
 
-        // 抄送
-        builder.cc(parseAddresses(message.getRecipients(Message.RecipientType.CC)));
+        try {
+            // 收件人
+            builder.to(parseAddresses(message.getRecipients(Message.RecipientType.TO)));
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法获取收件人: {}", e.getMessage());
+            builder.to(new ArrayList<>());
+        } catch (Exception e) {
+            log.warn("获取收件人失败: {}", e.getMessage());
+            builder.to(new ArrayList<>());
+        }
 
-        // 密送
-        builder.bcc(parseAddresses(message.getRecipients(Message.RecipientType.BCC)));
+        try {
+            // 抄送
+            builder.cc(parseAddresses(message.getRecipients(Message.RecipientType.CC)));
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法获取抄送: {}", e.getMessage());
+            builder.cc(new ArrayList<>());
+        } catch (Exception e) {
+            log.warn("获取抄送失败: {}", e.getMessage());
+            builder.cc(new ArrayList<>());
+        }
+
+        try {
+            // 密送
+            builder.bcc(parseAddresses(message.getRecipients(Message.RecipientType.BCC)));
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法获取密送: {}", e.getMessage());
+            builder.bcc(new ArrayList<>());
+        } catch (Exception e) {
+            log.warn("获取密送失败: {}", e.getMessage());
+            builder.bcc(new ArrayList<>());
+        }
     }
 
     /**
@@ -158,42 +197,60 @@ public class EasyMailContextBuilder {
      * 解析内容
      */
     private void parseContent(Message message, String attachmentDir,
-                              EasyMailContext.EasyMailContextBuilder builder) throws Exception {
+                              EasyMailContext.EasyMailContextBuilder builder) {
 
-        // 只调用一次parseContent，避免重复解析
-        String content = contentParser.parseContent(message, attachmentDir);
+        try {
+            // 只调用一次parseContent，避免重复解析
+            String content = contentParser.parseContent(message, attachmentDir);
 
-        // 设置文本内容和通用内容字段
-        builder.textContent(content);
-        builder.content(content); // 设置兼容性字段
+            // 设置文本内容和通用内容字段
+            builder.textContent(content);
+            builder.content(content); // 设置兼容性字段
 
-        // 如果是HTML内容，也保存HTML版本
-        if (message.isMimeType("text/html")) {
-            builder.htmlContent(message.getContent().toString());
-        } else if (message.isMimeType("multipart/*")) {
-            // 从多部分邮件中提取HTML内容
-            String htmlContent = extractHtmlFromMultipart((Multipart) message.getContent());
-            if (htmlContent != null) {
-                builder.htmlContent(htmlContent);
+            // 如果是HTML内容，也保存HTML版本
+            if (message.isMimeType("text/html")) {
+                builder.htmlContent(message.getContent().toString());
+            } else if (message.isMimeType("multipart/*")) {
+                // 从多部分邮件中提取HTML内容
+                String htmlContent = extractHtmlFromMultipart((Multipart) message.getContent());
+                if (htmlContent != null) {
+                    builder.htmlContent(htmlContent);
+                }
             }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法解析内容: {}", e.getMessage());
+            builder.textContent("[邮件内容解析失败：文件夹已关闭]");
+            builder.content("[邮件内容解析失败：文件夹已关闭]");
+        } catch (Exception e) {
+            log.warn("邮件内容解析失败: {}", e.getMessage());
+            builder.textContent("[邮件内容解析失败]");
+            builder.content("[邮件内容解析失败]");
         }
     }
 
     /**
      * 从多部分邮件中提取HTML内容
      */
-    private String extractHtmlFromMultipart(Multipart multipart) throws Exception {
-        int count = multipart.getCount();
-        for (int i = 0; i < count; i++) {
-            BodyPart bodyPart = multipart.getBodyPart(i);
-            if (bodyPart.isMimeType("text/html")) {
-                return bodyPart.getContent().toString();
-            } else if (bodyPart.isMimeType("multipart/*")) {
-                String htmlContent = extractHtmlFromMultipart((Multipart) bodyPart.getContent());
-                if (htmlContent != null) {
-                    return htmlContent;
+    private String extractHtmlFromMultipart(Multipart multipart) {
+        try {
+            int count = multipart.getCount();
+            for (int i = 0; i < count; i++) {
+                BodyPart bodyPart = multipart.getBodyPart(i);
+                if (bodyPart.isMimeType("text/html")) {
+                    return bodyPart.getContent().toString();
+                } else if (bodyPart.isMimeType("multipart/*")) {
+                    String htmlContent = extractHtmlFromMultipart((Multipart) bodyPart.getContent());
+                    if (htmlContent != null) {
+                        return htmlContent;
+                    }
                 }
             }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法提取HTML内容: {}", e.getMessage());
+            return null;
+        } catch (Exception e) {
+            log.warn("提取HTML内容失败: {}", e.getMessage());
+            return null;
         }
         return null;
     }
@@ -201,14 +258,21 @@ public class EasyMailContextBuilder {
     /**
      * 解析附件
      */
-    private void parseAttachments(Message message, EasyMailContext.EasyMailContextBuilder builder)
-            throws Exception {
+    private void parseAttachments(Message message, EasyMailContext.EasyMailContextBuilder builder) {
 
         List<EasyMailContext.AttachmentInfo> attachments = new ArrayList<>();
 
-        if (message.isMimeType("multipart/*")) {
-            Multipart multipart = (Multipart) message.getContent();
-            extractAttachmentsFromMultipart(multipart, attachments);
+        try {
+            if (message.isMimeType("multipart/*")) {
+                Multipart multipart = (Multipart) message.getContent();
+                extractAttachmentsFromMultipart(multipart, attachments);
+            }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法解析附件: {}", e.getMessage());
+            // 不抛出异常，继续处理其他部分
+        } catch (Exception e) {
+            log.warn("解析附件失败: {}", e.getMessage());
+            // 不抛出异常，继续处理其他部分
         }
 
         builder.attachments(attachments);
@@ -218,60 +282,70 @@ public class EasyMailContextBuilder {
      * 从多部分邮件中提取附件信息
      */
     private void extractAttachmentsFromMultipart(Multipart multipart,
-                                                 List<EasyMailContext.AttachmentInfo> attachments)
-            throws Exception {
+                                                 List<EasyMailContext.AttachmentInfo> attachments) {
 
-        int count = multipart.getCount();
-        for (int i = 0; i < count; i++) {
-            BodyPart bodyPart = multipart.getBodyPart(i);
+        try {
+            int count = multipart.getCount();
+            for (int i = 0; i < count; i++) {
+                BodyPart bodyPart = multipart.getBodyPart(i);
 
-            String disposition = bodyPart.getDisposition();
-            if (disposition != null && disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
-                String fileName = bodyPart.getFileName();
-                if (fileName != null) {
-                    fileName = contentParser.decodeText(fileName);
+                String disposition = bodyPart.getDisposition();
+                if (disposition != null && disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
+                    String fileName = bodyPart.getFileName();
+                    if (fileName != null) {
+                        fileName = contentParser.decodeText(fileName);
 
-                    EasyMailContext.AttachmentInfo attachmentInfo = EasyMailContext.AttachmentInfo.builder()
-                            .fileName(fileName)
-                            .fileSize(bodyPart.getSize())
-                            .contentType(bodyPart.getContentType())
-                            .inline(false)
-                            .build();
+                        EasyMailContext.AttachmentInfo attachmentInfo = EasyMailContext.AttachmentInfo.builder()
+                                .fileName(fileName)
+                                .fileSize(bodyPart.getSize())
+                                .contentType(bodyPart.getContentType())
+                                .inline(false)
+                                .build();
 
-                    attachments.add(attachmentInfo);
+                        attachments.add(attachmentInfo);
+                    }
+                } else if (bodyPart.isMimeType("multipart/*")) {
+                    extractAttachmentsFromMultipart((Multipart) bodyPart.getContent(), attachments);
                 }
-            } else if (bodyPart.isMimeType("multipart/*")) {
-                extractAttachmentsFromMultipart((Multipart) bodyPart.getContent(), attachments);
             }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法提取附件信息: {}", e.getMessage());
+        } catch (Exception e) {
+            log.warn("提取附件信息失败: {}", e.getMessage());
         }
     }
 
     /**
      * 提取标签
      */
-    private void extractTags(Message message, EasyMailContext.EasyMailContextBuilder builder)
-            throws MessagingException {
+    private void extractTags(Message message, EasyMailContext.EasyMailContextBuilder builder) {
 
         List<String> tags = new ArrayList<>();
 
-        // 从主题中提取标签
-        String subject = message.getSubject();
-        if (subject != null) {
-            // 提取方括号中的标签
-            Pattern tagPattern = Pattern.compile("\\[([^\\]]+)\\]");
-            Matcher matcher = tagPattern.matcher(subject);
-            while (matcher.find()) {
-                tags.add(matcher.group(1).trim());
+        try {
+            // 从主题中提取标签
+            String subject = message.getSubject();
+            if (subject != null) {
+                // 提取方括号中的标签
+                Pattern tagPattern = Pattern.compile("\\[([^\\]]+)\\]");
+                Matcher matcher = tagPattern.matcher(subject);
+                while (matcher.find()) {
+                    tags.add(matcher.group(1).trim());
+                }
+
+                // 根据主题内容添加分类标签
+                addCategoryTags(subject, tags);
             }
 
-            // 根据主题内容添加分类标签
-            addCategoryTags(subject, tags);
-        }
-
-        // 从邮件头中提取标签
-        String[] xLabels = message.getHeader("X-Label");
-        if (xLabels != null) {
-            Collections.addAll(tags, xLabels);
+            // 从邮件头中提取标签
+            String[] xLabels = message.getHeader("X-Label");
+            if (xLabels != null) {
+                Collections.addAll(tags, xLabels);
+            }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法提取标签信息: {}", e.getMessage());
+        } catch (Exception e) {
+            log.warn("提取标签信息失败: {}", e.getMessage());
         }
 
         builder.tags(tags);
@@ -309,44 +383,54 @@ public class EasyMailContextBuilder {
     /**
      * 解析时间信息
      */
-    private void parseTimeInfo(Message message, EasyMailContext.EasyMailContextBuilder builder)
-            throws MessagingException {
+    private void parseTimeInfo(Message message, EasyMailContext.EasyMailContextBuilder builder) {
 
-        // 接收时间
-        Date receivedDate = message.getReceivedDate();
-        if (receivedDate != null) {
-            builder.receivedTime(LocalDateTime.ofInstant(
-                    receivedDate.toInstant(), ZoneId.systemDefault()));
-        }
+        try {
+            // 接收时间
+            Date receivedDate = message.getReceivedDate();
+            if (receivedDate != null) {
+                builder.receivedTime(LocalDateTime.ofInstant(
+                        receivedDate.toInstant(), ZoneId.systemDefault()));
+            }
 
-        // 发送时间
-        Date sentDate = message.getSentDate();
-        if (sentDate != null) {
-            builder.sentTime(LocalDateTime.ofInstant(
-                    sentDate.toInstant(), ZoneId.systemDefault()));
+            // 发送时间
+            Date sentDate = message.getSentDate();
+            if (sentDate != null) {
+                builder.sentTime(LocalDateTime.ofInstant(
+                        sentDate.toInstant(), ZoneId.systemDefault()));
+            }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法获取时间信息: {}", e.getMessage());
+        } catch (Exception e) {
+            log.warn("获取时间信息失败: {}", e.getMessage());
         }
     }
 
     /**
      * 解析其他属性
      */
-    private void parseOtherProperties(Message message, EasyMailContext.EasyMailContextBuilder builder)
-            throws MessagingException {
+    private void parseOtherProperties(Message message, EasyMailContext.EasyMailContextBuilder builder) {
 
-        // 邮件大小
-        builder.size(message.getSize());
+        try {
+            // 邮件大小
+            builder.size(message.getSize());
 
-        // 优先级
-        String[] priority = message.getHeader("X-Priority");
-        if (priority != null && priority.length > 0) {
-            builder.priority(priority[0]);
-        }
+            // 优先级
+            String[] priority = message.getHeader("X-Priority");
+            if (priority != null && priority.length > 0) {
+                builder.priority(priority[0]);
+            }
 
-        // 编码
-        String contentType = message.getContentType();
-        if (contentType != null) {
-            String encoding = extractEncoding(contentType);
-            builder.encoding(encoding);
+            // 编码
+            String contentType = message.getContentType();
+            if (contentType != null) {
+                String encoding = extractEncoding(contentType);
+                builder.encoding(encoding);
+            }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法获取其他属性: {}", e.getMessage());
+        } catch (Exception e) {
+            log.warn("获取其他属性失败: {}", e.getMessage());
         }
     }
 

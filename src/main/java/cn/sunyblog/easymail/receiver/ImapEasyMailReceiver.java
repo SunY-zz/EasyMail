@@ -1,5 +1,7 @@
 package cn.sunyblog.easymail.receiver;
 
+import cn.sunyblog.easymail.mail.EasyMailContentParser;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +39,9 @@ public class ImapEasyMailReceiver implements EasyMailReceiver {
 
     private static final Logger logger = LoggerFactory.getLogger(ImapEasyMailReceiver.class);
     private static final String RECEIVER_NAME = "imap";
+
+    @Autowired
+    private EasyMailContentParser contentParser;
 
     private Store store;
     private Folder currentFolder;
@@ -449,34 +454,55 @@ public class ImapEasyMailReceiver implements EasyMailReceiver {
     /**
      * 转换为EmailMessage
      */
-    private EmailMessage convertToEmailMessage(Message message) throws MessagingException, IOException {
+    private EmailMessage convertToEmailMessage(Message message) {
         EmailMessage emailMessage = new EmailMessage();
 
-        // 基本信息
-        emailMessage.setMessageId(getMessageId(message));
-        emailMessage.setSubject(message.getSubject());
-        emailMessage.setFrom(getAddressString(message.getFrom()));
-        emailMessage.setTo(getAddressList(message.getRecipients(Message.RecipientType.TO)));
-        emailMessage.setCc(getAddressList(message.getRecipients(Message.RecipientType.CC)));
-        emailMessage.setBcc(getAddressList(message.getRecipients(Message.RecipientType.BCC)));
+        try {
+            // 基本信息
+            emailMessage.setMessageId(getMessageId(message));
+            String subject = message.getSubject();
+            if (subject != null) {
+                subject = contentParser.decodeText(subject);
+            }
+            emailMessage.setSubject(subject);
 
-        // 日期
-        if (message.getSentDate() != null) {
-            emailMessage.setSentDate(LocalDateTime.ofInstant(message.getSentDate().toInstant(), ZoneId.systemDefault()));
-        }
-        if (message.getReceivedDate() != null) {
-            emailMessage.setReceivedDate(LocalDateTime.ofInstant(message.getReceivedDate().toInstant(), ZoneId.systemDefault()));
-        }
+            String from = getAddressString(message.getFrom());
+            if (from != null) {
+                from = contentParser.decodeText(from);
+            }
+            emailMessage.setFrom(from);
+            emailMessage.setTo(getAddressList(message.getRecipients(Message.RecipientType.TO)));
+            emailMessage.setCc(getAddressList(message.getRecipients(Message.RecipientType.CC)));
+            emailMessage.setBcc(getAddressList(message.getRecipients(Message.RecipientType.BCC)));
 
-        // 标志
-        emailMessage.setRead(message.isSet(Flags.Flag.SEEN));
-        emailMessage.setFlagged(message.isSet(Flags.Flag.FLAGGED));
+            // 日期
+            if (message.getSentDate() != null) {
+                emailMessage.setSentDate(LocalDateTime.ofInstant(message.getSentDate().toInstant(), ZoneId.systemDefault()));
+            }
+            if (message.getReceivedDate() != null) {
+                emailMessage.setReceivedDate(LocalDateTime.ofInstant(message.getReceivedDate().toInstant(), ZoneId.systemDefault()));
+            }
+
+            // 标志
+            emailMessage.setRead(message.isSet(Flags.Flag.SEEN));
+            emailMessage.setFlagged(message.isSet(Flags.Flag.FLAGGED));
+
+            // 文件夹
+            emailMessage.setFolderName(message.getFolder().getFullName());
+
+        } catch (javax.mail.FolderClosedException e) {
+            logger.warn("邮件文件夹已关闭，无法获取邮件基本信息: {}", e.getMessage());
+            // 设置默认值
+            emailMessage.setMessageId("folder_closed_" + System.currentTimeMillis());
+            emailMessage.setSubject("[文件夹已关闭]");
+            emailMessage.setFrom("unknown@folder.closed");
+            emailMessage.setFolderName("UNKNOWN");
+        } catch (Exception e) {
+            logger.warn("获取邮件基本信息失败: {}", e.getMessage());
+        }
 
         // 内容和附件
         parseContent(message, emailMessage);
-
-        // 文件夹
-        emailMessage.setFolderName(message.getFolder().getFullName());
 
         return emailMessage;
     }
@@ -484,44 +510,61 @@ public class ImapEasyMailReceiver implements EasyMailReceiver {
     /**
      * 解析邮件内容
      */
-    private void parseContent(Message message, EmailMessage emailMessage) throws MessagingException, IOException {
-        Object content = message.getContent();
+    private void parseContent(Message message, EmailMessage emailMessage) {
+        try {
+            Object content = message.getContent();
 
-        if (content instanceof String) {
-            if (message.isMimeType("text/html")) {
-                emailMessage.setHtmlContent((String) content);
-            } else {
-                emailMessage.setTextContent((String) content);
+            if (content instanceof String) {
+                String decodedContent = contentParser.decodeText((String) content);
+                if (message.isMimeType("text/html")) {
+                    emailMessage.setHtmlContent(decodedContent);
+                } else {
+                    emailMessage.setTextContent(decodedContent);
+                }
+            } else if (content instanceof MimeMultipart) {
+                parseMultipart((MimeMultipart) content, emailMessage);
             }
-        } else if (content instanceof MimeMultipart) {
-            parseMultipart((MimeMultipart) content, emailMessage);
+        } catch (javax.mail.FolderClosedException e) {
+            logger.warn("邮件文件夹已关闭，无法解析内容: {}", e.getMessage());
+            emailMessage.setTextContent("[邮件内容解析失败：文件夹已关闭]");
+        } catch (Exception e) {
+            logger.warn("邮件内容解析失败: {}", e.getMessage());
+            emailMessage.setTextContent("[邮件内容解析失败]");
         }
     }
 
     /**
      * 解析多部分内容
      */
-    private void parseMultipart(MimeMultipart multipart, EmailMessage emailMessage) throws MessagingException, IOException {
-        int count = multipart.getCount();
+    private void parseMultipart(MimeMultipart multipart, EmailMessage emailMessage) {
+        try {
+            int count = multipart.getCount();
 
-        for (int i = 0; i < count; i++) {
-            BodyPart bodyPart = multipart.getBodyPart(i);
+            for (int i = 0; i < count; i++) {
+                BodyPart bodyPart = multipart.getBodyPart(i);
 
-            if (Part.ATTACHMENT.equalsIgnoreCase(bodyPart.getDisposition()) ||
-                    (bodyPart.getFileName() != null && !bodyPart.getFileName().isEmpty())) {
-                // 附件
-                EmailAttachment attachment = parseAttachment(bodyPart);
-                emailMessage.getAttachments().add(attachment);
-            } else if (bodyPart.isMimeType("text/plain")) {
-                // 纯文本内容
-                emailMessage.setTextContent((String) bodyPart.getContent());
-            } else if (bodyPart.isMimeType("text/html")) {
-                // HTML内容
-                emailMessage.setHtmlContent((String) bodyPart.getContent());
-            } else if (bodyPart.isMimeType("multipart/*")) {
-                // 嵌套多部分
-                parseMultipart((MimeMultipart) bodyPart.getContent(), emailMessage);
+                if (Part.ATTACHMENT.equalsIgnoreCase(bodyPart.getDisposition()) ||
+                        (bodyPart.getFileName() != null && !bodyPart.getFileName().isEmpty())) {
+                    // 附件
+                    EmailAttachment attachment = parseAttachment(bodyPart);
+                    emailMessage.getAttachments().add(attachment);
+                } else if (bodyPart.isMimeType("text/plain")) {
+                    // 纯文本内容
+                    String textContent = contentParser.decodeText((String) bodyPart.getContent());
+                    emailMessage.setTextContent(textContent);
+                } else if (bodyPart.isMimeType("text/html")) {
+                    // HTML内容
+                    String htmlContent = contentParser.decodeText((String) bodyPart.getContent());
+                    emailMessage.setHtmlContent(htmlContent);
+                } else if (bodyPart.isMimeType("multipart/*")) {
+                    // 嵌套多部分
+                    parseMultipart((MimeMultipart) bodyPart.getContent(), emailMessage);
+                }
             }
+        } catch (javax.mail.FolderClosedException e) {
+            logger.warn("邮件文件夹已关闭，无法解析多部分内容: {}", e.getMessage());
+        } catch (Exception e) {
+            logger.warn("解析多部分内容失败: {}", e.getMessage());
         }
     }
 
@@ -531,7 +574,11 @@ public class ImapEasyMailReceiver implements EasyMailReceiver {
     private EmailAttachment parseAttachment(BodyPart bodyPart) throws MessagingException, IOException {
         EmailAttachment attachment = new EmailAttachment();
 
-        attachment.setFileName(bodyPart.getFileName());
+        String fileName = bodyPart.getFileName();
+        if (fileName != null) {
+            fileName = contentParser.decodeText(fileName);
+        }
+        attachment.setFileName(fileName);
         attachment.setContentType(bodyPart.getContentType());
         attachment.setSize(bodyPart.getSize());
 
@@ -541,10 +588,16 @@ public class ImapEasyMailReceiver implements EasyMailReceiver {
         attachment.setContent(baos.toByteArray());
 
         // 检查是否为内联附件
-        String[] contentId = bodyPart.getHeader("Content-ID");
-        if (contentId != null && contentId.length > 0) {
-            attachment.setContentId(contentId[0]);
-            attachment.setInline(true);
+        try {
+            String[] contentId = bodyPart.getHeader("Content-ID");
+            if (contentId != null && contentId.length > 0) {
+                attachment.setContentId(contentId[0]);
+                attachment.setInline(true);
+            }
+        } catch (javax.mail.FolderClosedException e) {
+            logger.warn("邮件文件夹已关闭，无法获取附件Content-ID: {}", e.getMessage());
+        } catch (Exception e) {
+            logger.warn("获取附件Content-ID失败: {}", e.getMessage());
         }
 
         return attachment;
@@ -681,7 +734,13 @@ public class ImapEasyMailReceiver implements EasyMailReceiver {
         if (addresses == null || addresses.length == 0) {
             return null;
         }
-        return addresses[0].toString();
+        String addressStr = addresses[0].toString();
+        try {
+            return contentParser.decodeText(addressStr);
+        } catch (Exception e) {
+            logger.warn("解码地址失败: {}", e.getMessage());
+            return addressStr;
+        }
     }
 
     /**
@@ -692,7 +751,14 @@ public class ImapEasyMailReceiver implements EasyMailReceiver {
             return new ArrayList<>();
         }
         return Arrays.stream(addresses)
-                .map(Address::toString)
+                .map(address -> {
+                    try {
+                        return contentParser.decodeText(address.toString());
+                    } catch (Exception e) {
+                        logger.warn("解码地址失败: {}", e.getMessage());
+                        return address.toString();
+                    }
+                })
                 .collect(Collectors.toList());
     }
 }

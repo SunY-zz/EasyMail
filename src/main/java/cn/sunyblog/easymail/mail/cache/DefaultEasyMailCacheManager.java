@@ -191,6 +191,10 @@ public class DefaultEasyMailCacheManager implements EasyMailCacheManager {
 
             return null;
 
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法提取邮件ID: {}", e.getMessage());
+            // 生成一个基于时间和对象哈希的备用ID
+            return "folder_closed_" + System.currentTimeMillis() + "_" + message.hashCode();
         } catch (MessagingException e) {
             log.error("提取邮件ID异常: {}", e.getMessage(), e);
             return null;
@@ -205,6 +209,9 @@ public class DefaultEasyMailCacheManager implements EasyMailCacheManager {
             if (message.getFrom() != null && message.getFrom().length > 0) {
                 return message.getFrom()[0].toString();
             }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法提取发件人: {}", e.getMessage());
+            return "folder_closed";
         } catch (MessagingException e) {
             log.error("提取发件人异常: {}", e.getMessage(), e);
         }
@@ -221,6 +228,9 @@ public class DefaultEasyMailCacheManager implements EasyMailCacheManager {
                 return LocalDateTime.ofInstant(receivedDate.toInstant(),
                         java.time.ZoneId.systemDefault());
             }
+        } catch (javax.mail.FolderClosedException e) {
+            log.warn("邮件文件夹已关闭，无法提取接收时间: {}", e.getMessage());
+            return LocalDateTime.now();
         } catch (MessagingException e) {
             log.error("提取接收时间异常: {}", e.getMessage(), e);
         }
