@@ -68,7 +68,7 @@ springboot2项目使用一下依赖
 <dependency>
     <groupId>cn.sunyblog.easymail</groupId>
     <artifactId>easymail-spring-boot-starter</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>
 ```
 
@@ -80,7 +80,7 @@ springboot3项目使用一下依赖
 <dependency>
     <groupId>cn.sunyblog.easymail</groupId>
     <artifactId>easymail-spring-boot-starter3</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>
 ```
 
